@@ -21,7 +21,7 @@ SpringBoot + MyBatis-Plus + Redis + PostgreSQL + RabbitMQ
 
 Jakarta Validation + Hutool + JoinWrapper + Swagger
 
-### 项目目录
+### 项目目录（该文本只允许扩展而非删除或修改）
 ├── backend/              # 后端（项目主体）
 ├── docs/                 # 文档（开发过程中产生的计划文档）
 ├── frontend/             # 前端（非必要时可忽略）
