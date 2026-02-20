@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.models.database import init_db
-from app.routers import auth, interview, resume, ws
+from app.routers import auth, interview, question_bank, resume, ws
 
 # 日志配置：同时输出到文件和终端
 log_dir = Path("logs")
@@ -45,5 +45,6 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
+app.include_router(question_bank.router, prefix="/api/qb", tags=["question_bank"])
 app.include_router(interview.router, prefix="/api/interview", tags=["interview"])
 app.include_router(ws.router, tags=["websocket"])

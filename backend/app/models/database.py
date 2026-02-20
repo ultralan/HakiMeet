@@ -26,6 +26,7 @@ class User(Base):
     password_hash = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     resumes = relationship("Resume", back_populates="user")
+    question_banks = relationship("QuestionBank", back_populates="user")
     interviews = relationship("Interview", back_populates="user")
 
 
@@ -39,6 +40,19 @@ class Resume(Base):
     vectorized = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="resumes")
+
+
+class QuestionBank(Base):
+    __tablename__ = "question_banks"
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    filename = Column(String(255))
+    category = Column(String(100), nullable=False)
+    raw_text = Column(Text)
+    file_path = Column(String(500))
+    vectorized = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="question_banks")
 
 
 class JobPosition(Base):
@@ -56,6 +70,7 @@ class Interview(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     resume_id = Column(String, ForeignKey("resumes.id"))
     job_id = Column(String, ForeignKey("job_positions.id"))
+    qb_categories = Column(JSON, default=list)
     status = Column(String(20), default="pending")
     overall_score = Column(Float)
     report = Column(JSON)

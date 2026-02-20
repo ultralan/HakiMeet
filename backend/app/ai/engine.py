@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from app.config import settings
-from app.ai.rag import RAGPipeline
+from app.ai.rag import get_rag
 
 
 class InterviewEngine:
@@ -12,7 +12,7 @@ class InterviewEngine:
         self.interview_id = interview_id
         self.history: list = []
         self.turn_count = 0
-        self.rag = RAGPipeline()
+        self.rag = get_rag()
         self.llm = ChatOpenAI(
             model=settings.doubao_model_id,
             openai_api_key=settings.doubao_api_key,
@@ -34,7 +34,7 @@ class InterviewEngine:
             "- 难度从基础逐步递进\n"
             "- 保持专业但友好的语气\n"
             "- 用中文交流\n\n"
-            f"【候选人信息与岗位要求】\n{self.rag_context}\n\n"
+            f"【面试参考资料】\n{self.rag_context}\n\n"
             f"【当前进度】已问{self.turn_count}题"
         )
 
@@ -67,10 +67,14 @@ class InterviewEngine:
 
     async def end_interview(self) -> dict:
         """结束面试，生成评价报告"""
+        if len(self.history) <= 1:
+            return {"summary": "面试对话记录不足，无法生成评价报告。请确保完成至少一轮问答后再结束面试。"}
+
         msgs = [
             SystemMessage(content=(
-                "请根据以下面试对话，生成面试评价报告。"
-                "包含：总体评分(0-10)、各维度评分、优势、待改进点。"
+                "你是面试评价专家。请严格根据以下真实面试对话记录生成评价报告。\n"
+                "禁止编造任何不存在的对话内容，只基于实际对话进行评价。\n"
+                "报告格式：总体评分(0-10)、各维度评分、优势、待改进点。"
             )),
             *self.history,
         ]

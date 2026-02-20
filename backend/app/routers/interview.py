@@ -20,6 +20,7 @@ async def create_interview(
         user_id=user_id,
         resume_id=data.resume_id,
         job_id=data.job_id,
+        qb_categories=data.qb_categories,
         status="pending",
         started_at=datetime.utcnow(),
     )
