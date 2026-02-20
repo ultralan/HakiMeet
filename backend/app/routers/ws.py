@@ -1,13 +1,16 @@
 import json
+import re
 import asyncio
 import base64
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from langchain_core.messages import HumanMessage, AIMessage
 from app.ai.engine import InterviewEngine
-from app.ai.voice_engine import DoubaoVoiceEngine, AudioEvent, TextEvent, InterruptedEvent, SessionEndEvent
+from app.ai.voice_engine import DoubaoVoiceEngine, AudioEvent, TextEvent, InterruptedEvent, SessionEndEvent, ErrorEvent
+from app.models.database import async_session, Interview
 
 logger = logging.getLogger("hakimeet.ws")
 router = APIRouter()
@@ -35,7 +38,6 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
         await websocket.send_json({"type": "error", "data": {"message": "语音服务连接失败，请检查网络后重试"}})
         await websocket.close()
         return
-    await voice.send_rag_context(engine.rag_context)
     greeting = "你好，我是今天的面试官。请先做一个简单的自我介绍吧。"
     await voice.say_hello(greeting)
     engine.history.append(AIMessage(content=greeting))
@@ -71,6 +73,8 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                 elif isinstance(event, SessionEndEvent):
                     logger.info("会话结束事件")
                     break
+                elif isinstance(event, ErrorEvent):
+                    await websocket.send_json({"type": "error", "data": {"message": event.message}})
         except Exception as e:
             logger.error("forward_doubao_to_client 异常: %s", e)
 
@@ -81,7 +85,6 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
             msg = await websocket.receive()
 
             if msg.get("bytes"):
-                # 二进制帧 = 麦克风音频，转发给豆包
                 await voice.send_audio(msg["bytes"])
             elif msg.get("text"):
                 data = json.loads(msg["text"])
@@ -89,12 +92,80 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                 if data["type"] == "control":
                     action = data["data"]["action"]
                     if action == "end":
+                        # 先关闭语音引擎，避免 recv_task 干扰
+                        recv_task.cancel()
+                        try:
+                            await recv_task
+                        except asyncio.CancelledError:
+                            pass
+                        await voice.close()
+                        logger.info("语音引擎已关闭，开始生成报告")
+
                         report = await engine.end_interview()
                         await websocket.send_json({"type": "report", "data": report})
+
+                        # 持久化到数据库
+                        await _save_report(interview_id, report, engine.history)
                         break
     except WebSocketDisconnect:
         logger.info("客户端 WebSocket 断开")
     finally:
-        recv_task.cancel()
-        await voice.close()
+        if not recv_task.done():
+            recv_task.cancel()
+            try:
+                await recv_task
+            except asyncio.CancelledError:
+                pass
+        try:
+            await voice.close()
+        except Exception:
+            pass
         logger.info("面试会话清理完成")
+
+
+async def _save_report(interview_id: str, report: dict, history: list):
+    """将报告和对话轮次持久化到数据库"""
+    try:
+        summary = report.get("summary", "")
+        score = None
+        m = re.search(r'总体评分[*\s]*[（(：:\s]*(\d+(?:\.\d+)?)', summary)
+        if m:
+            score = float(m.group(1))
+
+        # 从 history 提取问答轮次
+        turns = []
+        turn_num = 0
+        pending_q = None
+        for msg in history:
+            if isinstance(msg, AIMessage):
+                pending_q = msg.content
+            elif isinstance(msg, HumanMessage) and pending_q:
+                turn_num += 1
+                turns.append({
+                    "interview_id": interview_id,
+                    "turn_number": turn_num,
+                    "ai_question": pending_q,
+                    "user_answer": msg.content,
+                })
+                pending_q = None
+
+        report["turn_count"] = turn_num
+
+        async with async_session() as db:
+            await db.execute(
+                Interview.__table__.update()
+                .where(Interview.id == interview_id)
+                .values(
+                    status="completed",
+                    report=report,
+                    overall_score=score,
+                    ended_at=datetime.utcnow(),
+                )
+            )
+            if turns:
+                from app.models.database import InterviewTurn
+                await db.execute(InterviewTurn.__table__.insert(), turns)
+            await db.commit()
+            logger.info("报告已保存, interview_id=%s, score=%s, turns=%d", interview_id, score, turn_num)
+    except Exception as e:
+        logger.error("保存报告失败: %s", e)

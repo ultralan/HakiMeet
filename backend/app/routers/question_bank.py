@@ -13,11 +13,6 @@ router = APIRouter()
 UPLOAD_DIR = Path("uploads/question_banks")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-PRESET_CATEGORIES = [
-    "Java", "Python", "MySQL", "Redis", "Spring",
-    "计算机网络", "操作系统", "数据结构与算法", "系统设计", "前端",
-]
-
 
 @router.post("/upload", response_model=QuestionBankOut)
 async def upload_question_bank(
@@ -52,10 +47,7 @@ async def upload_question_bank(
     from app.ai.rag import get_rag
     rag = get_rag()
     metadata = {"type": "question_bank", "category": category, "qb_id": qb.id}
-    if suffix == ".pdf":
-        await rag.ingest_pdf(str(file_path), metadata=metadata)
-    else:
-        await rag.ingest_text(raw_text, metadata=metadata)
+    await rag.ingest_questions(raw_text, metadata=metadata)
     qb.vectorized = True
     await db.commit()
     await db.refresh(qb)
@@ -84,9 +76,7 @@ async def get_categories(
     result = await db.execute(
         select(QuestionBank.category).where(QuestionBank.user_id == user_id).distinct()
     )
-    user_cats = [r[0] for r in result.all()]
-    all_cats = list(dict.fromkeys(PRESET_CATEGORIES + user_cats))
-    return all_cats
+    return [r[0] for r in result.all()]
 
 
 @router.delete("/{qb_id}")

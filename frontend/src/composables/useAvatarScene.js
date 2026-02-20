@@ -2,35 +2,61 @@ import { onUnmounted } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
+// 15 个 viseme 名称，用于说话时随机驱动
+const VISEME_KEYS = [
+  'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+  'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
+  'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U',
+]
+
 export function useAvatarScene(canvasEl) {
-  let renderer, scene, camera, mixer, clock, frameId
-  let headBone = null
-  let jawBone = null
-  let mesh = null
+  let renderer, scene, camera, clock, frameId
   let speaking = false
-  let fallbackJaw = null
+
+  // 模型引用
+  let headBone = null, spineBone = null
+  let morphMesh = null   // Wolf3D_Avatar mesh
+  let morphDict = null   // morphTargetDictionary 缓存
+
+  // viseme 时间轴（未来由后端 rhubarb 推送）
+  let visemeTimeline = null
+  let visemeStartTime = 0
+
+  // 当前 viseme 权重（用于 lerp 平滑）
+  let currentVisemes = new Float32Array(15)
 
   function init() {
     clock = new THREE.Clock()
     scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xf0f0f0)
+    scene.background = new THREE.Color(0xf0f1f6)
 
-    camera = new THREE.PerspectiveCamera(30, 1, 0.1, 10)
-    camera.position.set(0, 1.55, 0.8)
-    camera.lookAt(0, 1.45, 0)
+    camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20)
+    camera.position.set(0, 1.75, 1.1)
+    camera.lookAt(0, 1.68, 0)
 
     renderer = new THREE.WebGLRenderer({ canvas: canvasEl.value, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.3
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5))
-    const dir = new THREE.DirectionalLight(0xffffff, 1)
-    dir.position.set(1, 2, 1)
-    scene.add(dir)
-
+    setupLights()
     loadModel()
     resize()
     animate()
+  }
+
+  function setupLights() {
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5))
+    const key = new THREE.DirectionalLight(0xffffff, 2.0)
+    key.position.set(1.5, 2.5, 2)
+    scene.add(key)
+    const fill = new THREE.DirectionalLight(0xe8e0ff, 0.6)
+    fill.position.set(-2, 1.5, 1)
+    scene.add(fill)
+    const rim = new THREE.DirectionalLight(0xddd6fe, 0.4)
+    rim.position.set(0, 1, -2)
+    scene.add(rim)
   }
 
   function loadModel() {
@@ -38,106 +64,129 @@ export function useAvatarScene(canvasEl) {
       const model = gltf.scene
       scene.add(model)
 
-      // 查找头骨骼和下巴骨骼
       model.traverse((node) => {
         if (node.isBone) {
           if (node.name === 'Head') headBone = node
-          if (node.name === 'Jaw') jawBone = node
+          if (node.name === 'Spine') spineBone = node
         }
-        if (node.isMesh && node.morphTargetInfluences) mesh = node
+        if (node.isMesh && node.morphTargetInfluences) {
+          morphMesh = node
+          morphDict = node.morphTargetDictionary
+        }
       })
-
-      // 播放内置动画（如果有）
-      if (gltf.animations.length) {
-        mixer = new THREE.AnimationMixer(model)
-        mixer.clipAction(gltf.animations[0]).play()
-      }
     }, undefined, (err) => {
-      console.warn('GLB 加载失败，使用备用头像', err)
-      createFallbackAvatar()
+      console.warn('GLB 加载失败:', err)
     })
   }
 
-  function createFallbackAvatar() {
-    const skin = new THREE.MeshStandardMaterial({ color: 0xf5cba7 })
-    const group = new THREE.Group()
-    group.position.y = 1.05
-
-    // 头
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 32), skin)
-    head.position.y = 0.42
-    head.scale.set(1, 1.15, 1)
-    group.add(head)
-    headBone = head
-
-    // 身体
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.45, 32), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }))
-    body.position.y = 0.05
-    group.add(body)
-
-    // 脖子
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.08, 16), skin)
-    neck.position.y = 0.3
-    group.add(neck)
-
-    // 眼睛
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x333333 })
-    const eyeGeo = new THREE.SphereGeometry(0.025, 16, 16)
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat)
-    eyeL.position.set(-0.06, 0.45, 0.15)
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat)
-    eyeR.position.set(0.06, 0.45, 0.15)
-    group.add(eyeL, eyeR)
-
-    // 嘴巴（用于说话动画）
-    fallbackJaw = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc0392b }))
-    fallbackJaw.position.set(0, 0.37, 0.14)
-    fallbackJaw.scale.set(1, 0.3, 0.5)
-    group.add(fallbackJaw)
-
-    scene.add(group)
-  }
-
+  // ── 动画循环 ──
   function animate() {
     frameId = requestAnimationFrame(animate)
     const dt = clock.getDelta()
     const t = clock.elapsedTime
+    if (!morphMesh) { renderer.render(scene, camera); return }
 
-    if (mixer) mixer.update(dt)
-
-    // idle: 眨眼
-    if (mesh?.morphTargetDictionary) {
-      const blinkIdx = mesh.morphTargetDictionary['eyeBlinkLeft'] ?? mesh.morphTargetDictionary['eyeBlink_L']
-      const blinkIdxR = mesh.morphTargetDictionary['eyeBlinkRight'] ?? mesh.morphTargetDictionary['eyeBlink_R']
-      // 每3秒眨一次，持续0.15秒
-      const blinkCycle = t % 3
-      const blinkVal = blinkCycle < 0.15 ? 1 : 0
-      if (blinkIdx !== undefined) mesh.morphTargetInfluences[blinkIdx] = blinkVal
-      if (blinkIdxR !== undefined) mesh.morphTargetInfluences[blinkIdxR] = blinkVal
-
-      // 说话时简单张嘴
-      if (speaking) {
-        const jawIdx = mesh.morphTargetDictionary['viseme_aa'] ?? mesh.morphTargetDictionary['jawOpen']
-        if (jawIdx !== undefined) {
-          mesh.morphTargetInfluences[jawIdx] = 0.3 + Math.sin(t * 8) * 0.3
-        }
-      }
-    }
-
-    // fallback 嘴巴说话动画
-    if (fallbackJaw) {
-      fallbackJaw.scale.y = speaking ? 0.3 + Math.sin(t * 8) * 0.25 : 0.3
-    }
-
-    // idle: 头部微动 + 呼吸
-    if (headBone) {
-      headBone.rotation.y = Math.sin(t * 0.5) * 0.03
-      headBone.rotation.x = Math.sin(t * 0.3) * 0.02
-    }
+    animateBlink(t)
+    animateIdle(t)
+    animateMouth(t, dt)
 
     renderer.render(scene, camera)
   }
 
+  // 眨眼：随机间隔 3~5 秒
+  let nextBlink = 2
+  function animateBlink(t) {
+    const blinkL = morphDict['eyeBlinkLeft']
+    const blinkR = morphDict['eyeBlinkRight']
+    if (blinkL == null) return
+
+    const inf = morphMesh.morphTargetInfluences
+    if (t >= nextBlink) {
+      inf[blinkL] = 1; inf[blinkR] = 1
+      if (t >= nextBlink + 0.15) {
+        inf[blinkL] = 0; inf[blinkR] = 0
+        nextBlink = t + 3 + Math.random() * 2
+      }
+    }
+  }
+
+  // 头部微动 + 呼吸
+  function animateIdle(t) {
+    if (headBone) {
+      headBone.rotation.y = Math.sin(t * 0.5) * 0.03
+      headBone.rotation.x = Math.sin(t * 0.3) * 0.02
+    }
+    if (spineBone) {
+      spineBone.scale.y = 1 + Math.sin(t * 1.2) * 0.003
+    }
+  }
+
+  // 口型动画
+  function animateMouth(t, dt) {
+    const inf = morphMesh.morphTargetInfluences
+    const lerpSpeed = 12 * dt  // 平滑系数
+
+    if (speaking && visemeTimeline) {
+      // 模式 A：后端推送的 viseme 时间轴
+      driveFromTimeline(t, inf, lerpSpeed)
+    } else if (speaking) {
+      // 模式 B：无时间轴时，程序化模拟口型
+      driveProceduralMouth(t, inf, lerpSpeed)
+    } else {
+      // 静默：所有 viseme 归零
+      for (let i = 0; i < VISEME_KEYS.length; i++) {
+        const idx = morphDict[VISEME_KEYS[i]]
+        if (idx != null) {
+          currentVisemes[i] = lerp(currentVisemes[i], 0, lerpSpeed)
+          inf[idx] = currentVisemes[i]
+        }
+      }
+    }
+  }
+
+  // 从 viseme 时间轴驱动（未来 rhubarb 接入用）
+  function driveFromTimeline(t, inf, lerpSpeed) {
+    const elapsed = t - visemeStartTime
+    // 找当前 cue
+    let cue = null
+    for (const c of visemeTimeline) {
+      if (elapsed >= c.start && elapsed < c.end) { cue = c; break }
+    }
+    for (let i = 0; i < VISEME_KEYS.length; i++) {
+      const idx = morphDict[VISEME_KEYS[i]]
+      if (idx == null) continue
+      const target = (cue && VISEME_KEYS[i] === `viseme_${cue.value}`) ? 1 : 0
+      currentVisemes[i] = lerp(currentVisemes[i], target, lerpSpeed)
+      inf[idx] = currentVisemes[i]
+    }
+  }
+
+  // 程序化口型模拟（说话时自然感）
+  function driveProceduralMouth(t, inf, lerpSpeed) {
+    // 用多个正弦波叠加模拟自然说话节奏
+    const base = Math.sin(t * 7) * 0.5 + 0.5
+    const vary = Math.sin(t * 11.3) * 0.3 + Math.sin(t * 4.7) * 0.2
+
+    // 主要驱动 jawOpen + 几个元音 viseme 交替
+    const jawIdx = morphDict['jawOpen']
+    if (jawIdx != null) inf[jawIdx] = base * 0.5
+
+    // 在元音 viseme 之间切换
+    const vowels = ['viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U']
+    const pick = Math.floor((t * 5) % vowels.length)
+    for (let i = 0; i < VISEME_KEYS.length; i++) {
+      const idx = morphDict[VISEME_KEYS[i]]
+      if (idx == null) continue
+      let target = 0
+      if (VISEME_KEYS[i] === vowels[pick]) target = (base + vary) * 0.6
+      currentVisemes[i] = lerp(currentVisemes[i], target, lerpSpeed)
+      inf[idx] = currentVisemes[i]
+    }
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * Math.min(t, 1) }
+
+  // ── 公共 API ──
   function resize() {
     if (!canvasEl.value || !renderer) return
     const w = canvasEl.value.clientWidth
@@ -149,18 +198,24 @@ export function useAvatarScene(canvasEl) {
 
   function setSpeaking(val) { speaking = val }
 
+  // 未来接入：后端推送 viseme 时间轴时调用
+  function setVisemes(timeline) {
+    visemeTimeline = timeline
+    visemeStartTime = clock.elapsedTime
+  }
+
   function dispose() {
     cancelAnimationFrame(frameId)
     renderer?.dispose()
     scene?.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose()
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose())
-        else obj.material.dispose()
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+        mats.forEach((m) => m.dispose())
       }
     })
   }
 
   onUnmounted(dispose)
-  return { init, resize, setSpeaking, dispose }
+  return { init, resize, setSpeaking, setVisemes, dispose }
 }

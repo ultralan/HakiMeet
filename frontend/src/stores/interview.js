@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export const useInterviewStore = defineStore('interview', () => {
   const messages = ref([])
-  const status = ref('idle') // idle | connecting | active | ended
+  const status = ref('idle') // idle | connecting | initializing | active | ended
   const isRecording = ref(false)
   const aiSpeaking = ref(false)
   const ws = ref(null)
@@ -13,16 +13,26 @@ export const useInterviewStore = defineStore('interview', () => {
   function setAudioPlayer(player) { audioPlayer = player }
 
   function connect(interviewId) {
+    // 关闭旧连接
+    if (ws.value) {
+      ws.value.onclose = null
+      ws.value.onmessage = null
+      ws.value.close()
+      ws.value = null
+    }
+
     status.value = 'connecting'
     const socket = new WebSocket(`ws://localhost:8000/ws/interview/${interviewId}`)
 
     socket.onopen = () => {
       socket.send(JSON.stringify({ mode: 'voice' }))
-      status.value = 'active'
+      status.value = 'initializing'
     }
 
     socket.onmessage = (event) => {
+      if (ws.value !== socket) return // 忽略旧连接的消息
       const msg = JSON.parse(event.data)
+      if (status.value === 'initializing') status.value = 'active'
       if (msg.type === 'ai_text') {
         messages.value.push({ role: 'ai', text: msg.data.text })
       } else if (msg.type === 'user_text') {
@@ -41,13 +51,18 @@ export const useInterviewStore = defineStore('interview', () => {
       } else if (msg.type === 'interrupted') {
         aiSpeaking.value = false
         if (audioPlayer) audioPlayer.flush()
+      } else if (msg.type === 'error') {
+        messages.value.push({ role: 'system', text: msg.data.message })
       } else if (msg.type === 'report') {
         status.value = 'ended'
         messages.value.push({ role: 'system', text: msg.data.summary })
       }
     }
 
-    socket.onclose = () => { status.value = 'idle' }
+    socket.onclose = () => {
+      if (ws.value !== socket) return // 已被替换或清理，忽略
+      if (status.value !== 'ended') status.value = 'idle'
+    }
     ws.value = socket
   }
 
@@ -63,6 +78,11 @@ export const useInterviewStore = defineStore('interview', () => {
   }
 
   function reset() {
+    if (ws.value) {
+      ws.value.onclose = null
+      ws.value.onmessage = null
+      ws.value.close()
+    }
     messages.value = []
     status.value = 'idle'
     isRecording.value = false

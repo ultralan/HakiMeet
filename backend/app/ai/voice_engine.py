@@ -16,8 +16,9 @@ logger = logging.getLogger("hakimeet.voice")
 
 
 def _sanitize(text: str) -> str:
-    """移除控制字符，保留换行和空格"""
-    return "".join(c if c >= ' ' or c in '\n\r\t' else '' for c in text)
+    """移除控制字符和 YAML 不安全字符，保留换行和空格"""
+    text = text.replace('\\', '/').replace('\t', ' ')
+    return "".join(c if c >= ' ' or c == '\n' else '' for c in text)
 
 
 @dataclass
@@ -37,6 +38,10 @@ class InterruptedEvent:
 class SessionEndEvent:
     pass
 
+@dataclass
+class ErrorEvent:
+    message: str
+
 
 class DoubaoVoiceEngine:
     """管理与豆包语音大模型 WS API 的连接，遵循官方二进制协议"""
@@ -45,7 +50,9 @@ class DoubaoVoiceEngine:
         self.ws = None
         self.session_id = str(uuid.uuid4())
         self._closed = False
+        self._reconnecting = False
         self._audio_send_count = 0
+        self._system_prompt = None
 
     def _build_request(self, event_id: int, payload_dict: dict, session: bool = True):
         """构建带官方二进制头的请求"""
@@ -74,7 +81,8 @@ class DoubaoVoiceEngine:
         return req
 
     async def connect(self, system_prompt: str, retries: int = 2):
-        """建立连接，完成 StartConnection + StartSession + SayHello"""
+        """建立连接，完成 StartConnection + StartSession"""
+        self._system_prompt = system_prompt
         logger.info("正在连接豆包语音 API: %s", settings.doubao_voice_ws_url)
         headers = {
             "X-Api-App-ID": settings.doubao_voice_app_id,
@@ -109,7 +117,10 @@ class DoubaoVoiceEngine:
 
         # StartSession (event=100)
         session_config = {
-            "asr": {"extra": {"end_smooth_window_ms": 1500}},
+            "asr": {
+                "audio_config": {"channel": 1, "format": "pcm_s16le", "sample_rate": 16000},
+                "extra": {"end_smooth_window_ms": 1500},
+            },
             "tts": {
                 "speaker": "zh_male_yunzhou_jupiter_bigtts",
                 "audio_config": {"channel": 1, "format": "pcm_s16le", "sample_rate": 24000},
@@ -128,17 +139,33 @@ class DoubaoVoiceEngine:
         resp = await self.ws.recv()
         logger.info("StartSession 响应: %s", protocol.parse_response(resp))
 
+    async def _reconnect(self):
+        """出错后自动重连"""
+        self._reconnecting = True
+        logger.info("正在重连豆包语音...")
+        try:
+            await self.ws.close()
+        except Exception:
+            pass
+        self.session_id = str(uuid.uuid4())
+        self._audio_send_count = 0
+        await self.connect(self._system_prompt)
+        self._reconnecting = False
+
     async def say_hello(self, content: str):
         """发送开场白 (event=300)"""
         await self.ws.send(self._build_request(300, {"content": content}))
 
     async def send_audio(self, data: bytes):
         """转发音频二进制帧 (event=200)"""
-        if self.ws and not self._closed:
+        if self.ws and not self._closed and not self._reconnecting:
             self._audio_send_count += 1
             if self._audio_send_count % 50 == 1:
                 logger.info("发送音频帧 #%d: %d bytes", self._audio_send_count, len(data))
-            await self.ws.send(self._build_audio_request(data))
+            try:
+                await self.ws.send(self._build_audio_request(data))
+            except websockets.ConnectionClosed:
+                logger.warning("send_audio: 连接已关闭，等待重连")
 
     async def send_rag_context(self, rag_text: str):
         """发送 RAG 外部知识 (event=502)"""
@@ -152,9 +179,10 @@ class DoubaoVoiceEngine:
             logger.warning("receive_loop: ws 未连接")
             return
         logger.info("receive_loop 已启动，等待豆包消息...")
-        ai_chunks = []          # 累积 event550 的 content 分词
-        last_user_text = ""     # event451 的最新 origin_text
-        try:
+        ai_chunks = []
+        last_user_text = ""
+        while not self._closed:
+          try:
             async for message in self.ws:
                 if self._closed:
                     break
@@ -200,11 +228,32 @@ class DoubaoVoiceEngine:
                         yield InterruptedEvent()
                     elif event in (152, 153):
                         yield SessionEndEvent()
-                        break
+                        return
                 elif msg_type == 'SERVER_ERROR_RESPONSE':
                     logger.error("豆包错误: %s", resp)
-        except websockets.ConnectionClosed as e:
-            logger.warning("豆包 WebSocket 断开: %s", e)
+                    yield ErrorEvent(message=resp.get('payload_msg', {}).get('error', '语音服务异常'))
+                    break  # 跳出内层循环，触发重连
+            else:
+                return  # ws 正常结束，不重连
+            # 内层 break 到这里 → 尝试重连
+            if self._closed:
+                return
+            try:
+                await self._reconnect()
+                ai_chunks.clear()
+                last_user_text = ""
+            except Exception as e:
+                logger.error("重连失败: %s", e)
+                return
+          except websockets.ConnectionClosed as e:
+            logger.warning("豆包 WebSocket 断开: %s, 尝试重连", e)
+            try:
+                await self._reconnect()
+                ai_chunks.clear()
+                last_user_text = ""
+            except Exception:
+                logger.error("断线重连失败")
+                return
 
     async def finish(self):
         """FinishSession(102) + FinishConnection(2)"""

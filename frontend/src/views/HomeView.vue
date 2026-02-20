@@ -1,31 +1,129 @@
 <template>
-  <div class="home">
-    <h1>HakiMeet AI 面试官</h1>
-    <div class="resume-select">
-      <label>选择简历（可选）：</label>
-      <select v-model="selectedResumeId">
-        <option :value="null">不使用简历</option>
-        <option v-for="r in resumes" :key="r.id" :value="r.id">{{ r.filename }}</option>
-      </select>
+  <div class="p-10">
+    <!-- Header -->
+    <div class="mb-8 page-enter">
+      <h1 class="text-lg font-semibold text-text">{{ greeting }}</h1>
+      <p class="text-text-secondary text-sm mt-1">准备好下一场面试了吗？</p>
     </div>
-    <div class="qb-select" v-if="categories.length">
-      <label>选择题库分类：</label>
-      <div class="cat-checks">
-        <label v-for="c in categories" :key="c">
-          <input type="checkbox" :value="c" v-model="selectedCats" /> {{ c }}
-        </label>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-5 mb-8">
+      <div v-for="(s, i) in stats" :key="s.label"
+        class="card card-hover rounded-2xl p-5 page-enter" :class="'stagger-' + (i + 1)">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs text-text-muted font-medium">{{ s.label }}</div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" :class="s.iconBg">
+            <svg class="w-4 h-4" :class="s.iconColor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path :d="s.icon" />
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-text">{{ s.value }}</div>
+        <div class="text-xs mt-1.5 font-medium" :class="s.color">{{ s.sub }}</div>
       </div>
     </div>
-    <div class="actions">
-      <button @click="startInterview" :disabled="!canStart">开始面试</button>
-      <router-link to="/resume">管理简历</router-link>
-      <router-link to="/question-bank">管理题库</router-link>
+
+    <!-- Quick Start -->
+    <div class="card rounded-2xl p-6 mb-8 page-enter stagger-2">
+      <h2 class="text-sm font-semibold text-text mb-5">快速开始面试</h2>
+
+      <div class="grid grid-cols-2 gap-5 mb-5">
+        <div>
+          <label class="text-xs text-text-muted font-medium block mb-2">选择简历（可选）</label>
+          <div class="relative" ref="dropdownRef">
+            <button @click="dropOpen = !dropOpen" type="button"
+              class="w-full bg-bg border border-border rounded-xl px-3.5 py-2.5 text-sm text-left outline-none transition flex items-center justify-between"
+              :class="dropOpen ? 'border-accent ring-2 ring-accent-soft' : 'hover:border-border-light'">
+              <span :class="selectedResumeId ? 'text-text' : 'text-text-muted'">{{ selectedResumeLabel }}</span>
+              <svg class="w-4 h-4 text-text-muted shrink-0 transition-transform" :class="dropOpen && 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <Transition name="drop">
+              <div v-if="dropOpen"
+                class="absolute z-10 mt-1.5 w-full bg-surface border border-border rounded-xl shadow-md overflow-hidden py-1">
+                <div v-for="opt in resumeOptions" :key="opt.value"
+                  @click="selectedResumeId = opt.value; dropOpen = false"
+                  class="px-3.5 py-2 text-sm cursor-pointer transition"
+                  :class="selectedResumeId === opt.value ? 'bg-accent-soft text-accent font-medium' : 'text-text hover:bg-surface-hover'">
+                  {{ opt.label }}
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-text-muted font-medium block mb-2">题库分类</label>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="c in categories" :key="c"
+              @click="toggleCat(c)"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-medium border transition btn-press"
+              :class="selectedCats.includes(c)
+                ? 'bg-accent text-white border-accent shadow-sm'
+                : 'bg-surface border-border text-text-secondary hover:border-accent/30 hover:text-accent'">
+              {{ c }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button @click="startInterview" :disabled="!canStart"
+        class="px-6 py-2.5 rounded-xl text-sm font-semibold transition btn-press
+          bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md
+          disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
+        开始面试
+      </button>
+    </div>
+
+    <!-- Tips -->
+    <div class="card rounded-2xl p-6 mb-8 page-enter stagger-3">
+      <h2 class="text-sm font-semibold text-text mb-4">面试小贴士</h2>
+      <div class="grid grid-cols-3 gap-4">
+        <div v-for="tip in tips" :key="tip.title"
+          class="rounded-xl bg-bg p-4 group hover:bg-accent-soft transition">
+          <div class="text-sm font-medium text-text mb-1 group-hover:text-accent transition">{{ tip.title }}</div>
+          <div class="text-xs text-text-muted leading-relaxed">{{ tip.desc }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent History -->
+    <div class="page-enter stagger-4">
+      <router-link to="/history" class="text-sm font-semibold text-text mb-4 inline-flex items-center gap-1.5 hover:text-accent transition no-underline group">
+        最近面试
+        <svg class="w-3.5 h-3.5 text-text-muted group-hover:text-accent transition translate-x-0 group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </router-link>
+      <div class="card rounded-2xl overflow-hidden divide-y divide-border/60">
+        <div v-for="h in history" :key="h.id"
+          class="flex items-center justify-between px-5 py-4 hover:bg-surface-hover transition cursor-pointer group"
+          @click="$router.push(`/interview/${h.id}`)">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold"
+              :class="h.score >= 80 ? 'bg-success-soft text-success' : h.score >= 60 ? 'bg-warning-soft text-warning' : 'bg-danger-soft text-danger'">
+              {{ h.score || '—' }}
+            </div>
+            <div>
+              <div class="text-sm text-text font-medium group-hover:text-accent transition">{{ h.title }}</div>
+              <div class="text-xs text-text-muted mt-0.5">{{ h.date }} · {{ h.duration }}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-medium px-2.5 py-1 rounded-lg"
+              :class="h.status === '已完成' ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'">
+              {{ h.status }}
+            </span>
+            <svg class="w-4 h-4 text-text-muted opacity-0 group-hover:opacity-100 transition -translate-x-1 group-hover:translate-x-0"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -33,41 +131,109 @@ const resumes = ref([])
 const categories = ref([])
 const selectedResumeId = ref(null)
 const selectedCats = ref([])
+const dropOpen = ref(false)
+const dropdownRef = ref(null)
+
+const resumeOptions = computed(() => [
+  { value: null, label: '不使用简历' },
+  ...resumes.value.map(r => ({ value: r.id, label: r.filename }))
+])
+const selectedResumeLabel = computed(() =>
+  resumeOptions.value.find(o => o.value === selectedResumeId.value)?.label || '不使用简历'
+)
+
+function onClickOutside(e) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) dropOpen.value = false
+}
+onMounted(() => document.addEventListener('click', onClickOutside))
+onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
 const canStart = computed(() => selectedResumeId.value || selectedCats.value.length > 0)
 
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  if (h < 6) return '夜深了，还在练习'
+  if (h < 12) return '早上好'
+  if (h < 18) return '下午好'
+  return '晚上好'
+})
+
+function toggleCat(c) {
+  const i = selectedCats.value.indexOf(c)
+  i === -1 ? selectedCats.value.push(c) : selectedCats.value.splice(i, 1)
+}
+
+const stats = ref([
+  { label: '总面试次数', value: '—', sub: '', color: 'text-success', icon: 'M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2', iconBg: 'bg-accent-soft', iconColor: 'text-accent' },
+  { label: '平均得分', value: '—', sub: '', color: 'text-success', icon: 'M13 17l5-5-5-5M6 17l5-5-5-5', iconBg: 'bg-success-soft', iconColor: 'text-success' },
+  { label: '题库覆盖', value: '—', sub: '分类', color: 'text-accent', icon: 'M4 19.5A2.5 2.5 0 016.5 17H20', iconBg: 'bg-warning-soft', iconColor: 'text-warning' },
+])
+
+const tips = [
+  { title: 'STAR 法则', desc: '用情境、任务、行动、结果的结构回答行为面试题' },
+  { title: '技术深度', desc: '不只说"会用"，要能解释原理和取舍' },
+  { title: '主动提问', desc: '面试结尾准备 2-3 个有深度的问题' },
+]
+
+const history = ref([])
+
+function formatInterview(item) {
+  const date = item.started_at ? new Date(item.started_at).toLocaleDateString('zh-CN') : '—'
+  let duration = '—'
+  if (item.started_at && item.ended_at) {
+    const mins = Math.round((new Date(item.ended_at) - new Date(item.started_at)) / 60000)
+    duration = `${mins} 分钟`
+  }
+  const cats = item.qb_categories || []
+  return {
+    id: item.id,
+    title: cats.length ? cats.join(' + ') + ' 模拟面试' : '模拟面试',
+    date, duration,
+    score: item.overall_score || 0,
+    status: item.status === 'completed' ? '已完成' : '未完成',
+  }
+}
+
 onMounted(async () => {
-  const [resumeRes, catRes] = await Promise.all([
-    fetch('http://localhost:8000/api/resume/list'),
-    fetch('http://localhost:8000/api/qb/categories'),
-  ])
-  resumes.value = await resumeRes.json()
-  categories.value = await catRes.json()
+  try {
+    const [resumeRes, catRes, statsRes, historyRes] = await Promise.all([
+      fetch('http://localhost:8000/api/resume/list'),
+      fetch('http://localhost:8000/api/qb/categories'),
+      fetch('http://localhost:8000/api/interview/stats'),
+      fetch('http://localhost:8000/api/interview/list'),
+    ])
+    resumes.value = await resumeRes.json()
+    categories.value = await catRes.json()
+    const s = await statsRes.json()
+    stats.value[0].value = String(s.total_count)
+    stats.value[1].value = String(s.avg_score)
+    stats.value[2].value = s.category_coverage
+    history.value = (await historyRes.json()).slice(0, 4).map(formatInterview)
+  } catch (e) {
+    console.warn('Failed to load home data', e)
+  }
 })
 
 async function startInterview() {
-  const res = await fetch('http://localhost:8000/api/interview/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      resume_id: selectedResumeId.value,
-      job_id: 'demo',
-      qb_categories: selectedCats.value,
-    }),
-  })
-  const data = await res.json()
-  router.push(`/interview/${data.id}`)
+  try {
+    const res = await fetch('http://localhost:8000/api/interview/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resume_id: selectedResumeId.value,
+        job_id: 'demo',
+        qb_categories: selectedCats.value,
+      }),
+    })
+    const data = await res.json()
+    router.push(`/interview/${data.id}`)
+  } catch (e) {
+    console.warn('Failed to create interview', e)
+  }
 }
 </script>
 
 <style scoped>
-.home { text-align: center; padding: 60px 20px; }
-.resume-select, .qb-select { margin: 16px 0; }
-.cat-checks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
-.cat-checks label { background: #f3f4f6; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.actions { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
-button, a { padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; text-decoration: none; }
-button { background: #4f46e5; color: white; border: none; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-a { background: #f3f4f6; color: #333; }
+.drop-enter-active, .drop-leave-active { transition: all 0.15s ease; }
+.drop-enter-from, .drop-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>

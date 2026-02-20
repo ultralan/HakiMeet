@@ -47,6 +47,9 @@ class InterviewOut(BaseModel):
     id: str
     status: str
     overall_score: float | None
+    report: dict | None = None
+    qb_categories: list[str] = []
+    resume_id: str | None = None
     started_at: datetime | None
     ended_at: datetime | None
 
