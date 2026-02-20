@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useAvatarScene } from '../composables/useAvatarScene'
 
 const props = defineProps({ speaking: Boolean })
@@ -13,6 +13,10 @@ const avatar = useAvatarScene(canvas)
 onMounted(() => {
   avatar.init()
   window.addEventListener('resize', avatar.resize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', avatar.resize)
 })
 
 watch(() => props.speaking, (v) => avatar.setSpeaking(v))

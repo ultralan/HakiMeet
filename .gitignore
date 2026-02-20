@@ -11,3 +11,6 @@ backend/.env
 .env
 node_modules/
 dist/
+__MACOSX
+python3.7
+logs

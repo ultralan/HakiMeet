@@ -48,8 +48,8 @@ async def upload_resume(
     await db.refresh(resume)
 
     # 向量化简历内容
-    from app.ai.rag import RAGPipeline
-    rag = RAGPipeline()
+    from app.ai.rag import get_rag
+    rag = get_rag()
     metadata = {"resume_id": resume.id, "type": "resume"}
     if suffix == ".pdf":
         await rag.ingest_pdf(str(file_path), metadata=metadata)

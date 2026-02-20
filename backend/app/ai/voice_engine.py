@@ -27,6 +27,7 @@ class AudioEvent:
 @dataclass
 class TextEvent:
     text: str
+    role: str = "ai"  # "ai" or "user"
 
 @dataclass
 class InterruptedEvent:
@@ -151,30 +152,51 @@ class DoubaoVoiceEngine:
             logger.warning("receive_loop: ws 未连接")
             return
         logger.info("receive_loop 已启动，等待豆包消息...")
+        ai_chunks = []          # 累积 event550 的 content 分词
+        last_user_text = ""     # event451 的最新 origin_text
         try:
             async for message in self.ws:
                 if self._closed:
                     break
-                # 原始消息诊断
-                if isinstance(message, bytes):
-                    logger.info("收到豆包原始消息: %d bytes, 头4字节=%s", len(message), message[:4].hex())
-                else:
-                    logger.info("收到豆包文本消息: %s", str(message)[:200])
-
                 resp = protocol.parse_response(message)
                 if not resp:
-                    logger.warning("parse_response 返回空: message类型=%s", type(message))
                     continue
 
                 msg_type = resp.get('message_type')
                 event = resp.get('event')
 
                 if msg_type == 'SERVER_ACK' and isinstance(resp.get('payload_msg'), bytes):
-                    logger.info("收到豆包音频: %d bytes, event=%s", len(resp['payload_msg']), event)
                     yield AudioEvent(audio=resp['payload_msg'])
                 elif msg_type == 'SERVER_FULL_RESPONSE':
-                    logger.info("收到豆包响应: event=%s, payload=%s", event, str(resp.get('payload_msg', ''))[:200])
-                    if event == 450:
+                    payload = resp.get('payload_msg', {})
+                    if not isinstance(payload, dict):
+                        payload = {}
+
+                    if event == 550:
+                        # AI 文本流式分词
+                        chunk = payload.get('content', '')
+                        if chunk:
+                            ai_chunks.append(chunk)
+                    elif event == 559:
+                        # AI 回复结束 → yield 完整 AI 文本
+                        if ai_chunks:
+                            full = ''.join(ai_chunks)
+                            ai_chunks.clear()
+                            logger.info("AI 完整回复: %s", full[:100])
+                            yield TextEvent(text=full, role='ai')
+                    elif event == 451:
+                        # 用户 ASR 流式更新
+                        origin = payload.get('extra', {}).get('origin_text', '')
+                        if origin:
+                            last_user_text = origin
+                    elif event == 459:
+                        # 用户说完 → yield 用户文本
+                        if last_user_text:
+                            logger.info("用户语音转写: %s", last_user_text[:100])
+                            yield TextEvent(text=last_user_text, role='user')
+                            last_user_text = ""
+                    elif event == 450:
+                        ai_chunks.clear()
                         yield InterruptedEvent()
                     elif event in (152, 153):
                         yield SessionEndEvent()

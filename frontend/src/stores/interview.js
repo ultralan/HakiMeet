@@ -25,6 +25,8 @@ export const useInterviewStore = defineStore('interview', () => {
       const msg = JSON.parse(event.data)
       if (msg.type === 'ai_text') {
         messages.value.push({ role: 'ai', text: msg.data.text })
+      } else if (msg.type === 'user_text') {
+        messages.value.push({ role: 'user', text: msg.data.text })
       } else if (msg.type === 'ai_text_chunk') {
         if (msg.data.done) return
         const last = messages.value[messages.value.length - 1]

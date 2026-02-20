@@ -8,6 +8,7 @@ export function useAvatarScene(canvasEl) {
   let jawBone = null
   let mesh = null
   let speaking = false
+  let fallbackJaw = null
 
   function init() {
     clock = new THREE.Clock()
@@ -52,8 +53,49 @@ export function useAvatarScene(canvasEl) {
         mixer.clipAction(gltf.animations[0]).play()
       }
     }, undefined, (err) => {
-      console.warn('GLB 加载失败，请确认 public/models/avatar.glb 存在', err)
+      console.warn('GLB 加载失败，使用备用头像', err)
+      createFallbackAvatar()
     })
+  }
+
+  function createFallbackAvatar() {
+    const skin = new THREE.MeshStandardMaterial({ color: 0xf5cba7 })
+    const group = new THREE.Group()
+    group.position.y = 1.05
+
+    // 头
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 32), skin)
+    head.position.y = 0.42
+    head.scale.set(1, 1.15, 1)
+    group.add(head)
+    headBone = head
+
+    // 身体
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.45, 32), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }))
+    body.position.y = 0.05
+    group.add(body)
+
+    // 脖子
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.08, 16), skin)
+    neck.position.y = 0.3
+    group.add(neck)
+
+    // 眼睛
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x333333 })
+    const eyeGeo = new THREE.SphereGeometry(0.025, 16, 16)
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat)
+    eyeL.position.set(-0.06, 0.45, 0.15)
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat)
+    eyeR.position.set(0.06, 0.45, 0.15)
+    group.add(eyeL, eyeR)
+
+    // 嘴巴（用于说话动画）
+    fallbackJaw = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc0392b }))
+    fallbackJaw.position.set(0, 0.37, 0.14)
+    fallbackJaw.scale.set(1, 0.3, 0.5)
+    group.add(fallbackJaw)
+
+    scene.add(group)
   }
 
   function animate() {
@@ -80,6 +122,11 @@ export function useAvatarScene(canvasEl) {
           mesh.morphTargetInfluences[jawIdx] = 0.3 + Math.sin(t * 8) * 0.3
         }
       }
+    }
+
+    // fallback 嘴巴说话动画
+    if (fallbackJaw) {
+      fallbackJaw.scale.y = speaking ? 0.3 + Math.sin(t * 8) * 0.25 : 0.3
     }
 
     // idle: 头部微动 + 呼吸

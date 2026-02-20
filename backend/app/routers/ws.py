@@ -5,8 +5,9 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from langchain_core.messages import HumanMessage, AIMessage
 from app.ai.engine import InterviewEngine
-from app.ai.voice_engine import DoubaoVoiceEngine, AudioEvent, InterruptedEvent, SessionEndEvent
+from app.ai.voice_engine import DoubaoVoiceEngine, AudioEvent, TextEvent, InterruptedEvent, SessionEndEvent
 
 logger = logging.getLogger("hakimeet.ws")
 router = APIRouter()
@@ -35,16 +36,31 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
         await websocket.close()
         return
     await voice.send_rag_context(engine.rag_context)
-    await voice.say_hello("你好，我是今天的面试官。请先做一个简单的自我介绍吧。")
+    greeting = "你好，我是今天的面试官。请先做一个简单的自我介绍吧。"
+    await voice.say_hello(greeting)
+    engine.history.append(AIMessage(content=greeting))
     logger.info("say_hello 已发送")
 
     async def forward_doubao_to_client():
         """后台任务：豆包返回 → 前端"""
         try:
             async for event in voice.receive_loop():
-                if isinstance(event, AudioEvent):
+                if isinstance(event, TextEvent):
+                    logger.info("收到对话文本 [%s]: %s", event.role, event.text[:100])
+                    if event.role == 'user':
+                        engine.history.append(HumanMessage(content=event.text))
+                        await websocket.send_json({
+                            "type": "user_text",
+                            "data": {"text": event.text},
+                        })
+                    else:
+                        engine.history.append(AIMessage(content=event.text))
+                        await websocket.send_json({
+                            "type": "ai_text",
+                            "data": {"text": event.text},
+                        })
+                elif isinstance(event, AudioEvent):
                     audio_b64 = base64.b64encode(event.audio).decode()
-                    logger.info("转发音频到前端: %d bytes (base64: %d)", len(event.audio), len(audio_b64))
                     await websocket.send_json({
                         "type": "ai_audio",
                         "data": {"audio": audio_b64},

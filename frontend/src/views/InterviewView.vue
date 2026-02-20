@@ -1,7 +1,10 @@
 <template>
   <div class="interview">
-    <div class="mode-select" v-if="store.status === 'idle'">
-      <button class="start-btn" @click="startInterview">开始面试</button>
+    <div class="mode-select" v-if="store.status === 'idle' || store.status === 'connecting'">
+      <button class="start-btn" @click="startInterview" :disabled="store.status === 'connecting'">
+        <span v-if="store.status === 'connecting'" class="loading-text">正在准备面试环境<span class="dots"></span></span>
+        <span v-else>开始面试</span>
+      </button>
     </div>
 
     <!-- 视频区域 -->
@@ -34,12 +37,11 @@
       </button>
       <button class="end-btn" @click="store.endInterview()">结束面试</button>
     </div>
-    <p v-else-if="store.status === 'connecting'">连接中...</p>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useInterviewStore } from '../stores/interview'
 import { useAudioRecorder } from '../composables/useAudioRecorder'
@@ -56,7 +58,15 @@ const player = useAudioPlayer()
 const recorder = useAudioRecorder((buffer) => store.sendAudio(buffer))
 const cam = useCamera(videoEl)
 
-onMounted(() => cam.start())
+// 摄像头在面试激活且 video 元素渲染后启动
+watch(() => store.status, async (s) => {
+  if (s === 'active') {
+    await nextTick()
+    cam.start()
+  } else {
+    cam.stop()
+  }
+})
 
 // 监听播放状态同步到 store
 watch(() => player.playing.value, (v) => { store.aiSpeaking = v })
@@ -91,6 +101,9 @@ watch(() => store.messages.length, async () => {
 .mode-select { display: flex; gap: 8px; padding: 20px; justify-content: center; align-items: center; }
 .mode-select button { padding: 10px 20px; border: 2px solid #d1d5db; border-radius: 8px; background: white; cursor: pointer; }
 .start-btn { background: #4f46e5 !important; color: white; border-color: #4f46e5 !important; }
+.start-btn:disabled { opacity: 0.7; cursor: wait; }
+.dots::after { content: ''; animation: dots 1.5s steps(3) infinite; }
+@keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
 .chat-panel { flex: 1; overflow-y: auto; padding: 20px; }
 .msg { margin-bottom: 16px; }
 .msg.ai { text-align: left; }

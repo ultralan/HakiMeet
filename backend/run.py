@@ -1,5 +1,6 @@
 import os, sys
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 # Python 3.14 兼容: pydantic v1 类型推断broken，patch 让它 fallback 到 Any
 if sys.version_info >= (3, 14):
