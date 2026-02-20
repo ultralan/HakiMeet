@@ -1,4 +1,13 @@
 logs/*
 scripts/*
 frontend/**/node_modules/
-nul
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/chroma_db/
+backend/uploads/
+backend/.env
+*.pyc
+.env
+node_modules/
+dist/
