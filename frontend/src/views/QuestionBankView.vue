@@ -143,7 +143,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUpload } from '../composables/useUpload'
 
-const API = 'http://localhost:8000/api/qb'
+const API = '/api/qb'
 const list = ref([])
 const file = ref(null)
 const category = ref('')

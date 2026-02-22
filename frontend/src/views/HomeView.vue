@@ -197,10 +197,10 @@ function formatInterview(item) {
 onMounted(async () => {
   try {
     const [resumeRes, catRes, statsRes, historyRes] = await Promise.all([
-      fetch('http://localhost:8000/api/resume/list'),
-      fetch('http://localhost:8000/api/qb/categories'),
-      fetch('http://localhost:8000/api/interview/stats'),
-      fetch('http://localhost:8000/api/interview/list'),
+      fetch('/api/resume/list'),
+      fetch('/api/qb/categories'),
+      fetch('/api/interview/stats'),
+      fetch('/api/interview/list'),
     ])
     resumes.value = await resumeRes.json()
     categories.value = await catRes.json()
@@ -216,7 +216,7 @@ onMounted(async () => {
 
 async function startInterview() {
   try {
-    const res = await fetch('http://localhost:8000/api/interview/create', {
+    const res = await fetch('/api/interview/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

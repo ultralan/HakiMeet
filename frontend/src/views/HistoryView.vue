@@ -118,7 +118,7 @@ const history = ref([])
 
 onMounted(async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/interview/list')
+    const res = await fetch('/api/interview/list')
     const list = await res.json()
     history.value = list.map(item => {
       const date = item.started_at ? new Date(item.started_at).toLocaleDateString('zh-CN') : '—'
@@ -146,7 +146,7 @@ onMounted(async () => {
 async function deleteItem(id) {
   if (!await confirm('确定删除这条面试记录吗？', true)) return
   try {
-    await fetch(`http://localhost:8000/api/interview/${id}`, { method: 'DELETE' })
+    await fetch(`/api/interview/${id}`, { method: 'DELETE' })
     history.value = history.value.filter(h => h.id !== id)
   } catch (e) {
     console.warn('Delete failed', e)

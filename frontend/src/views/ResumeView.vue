@@ -94,7 +94,7 @@
 import { ref, onMounted } from 'vue'
 import { useUpload } from '../composables/useUpload'
 
-const API = 'http://localhost:8000/api/resume'
+const API = '/api/resume'
 const resumes = ref([])
 const file = ref(null)
 const dragging = ref(false)

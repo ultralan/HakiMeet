@@ -22,7 +22,8 @@ export const useInterviewStore = defineStore('interview', () => {
     }
 
     status.value = 'connecting'
-    const socket = new WebSocket(`ws://localhost:8000/ws/interview/${interviewId}`)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/interview/${interviewId}`)
 
     socket.onopen = () => {
       socket.send(JSON.stringify({ mode: 'voice' }))

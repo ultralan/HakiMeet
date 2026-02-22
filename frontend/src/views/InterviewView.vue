@@ -196,7 +196,7 @@ const report = ref(null)
 // 进入页面时检查面试是否已完成
 onMounted(async () => {
   try {
-    const res = await fetch(`http://localhost:8000/api/interview/${route.params.id}`)
+    const res = await fetch(`/api/interview/${route.params.id}`)
     if (!res.ok) return
     const data = await res.json()
     if (data.status === 'completed' && data.report) {
