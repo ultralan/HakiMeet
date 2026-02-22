@@ -87,9 +87,9 @@ class RAGPipeline:
         if ids:
             self.vectorstore._collection.delete(ids=ids)
 
-    async def search(self, query: str, k: int = 5) -> str:
+    async def search(self, query: str, k: int = 5, where: dict | None = None) -> str:
         """检索相关文档，返回拼接文本"""
-        docs = self.vectorstore.similarity_search(query, k=k)
+        docs = self.vectorstore.similarity_search(query, k=k, filter=where)
         return "\n\n".join(doc.page_content for doc in docs)
 
     async def get_context(self, interview_id: str) -> str:

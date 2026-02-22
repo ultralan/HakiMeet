@@ -200,7 +200,7 @@ onMounted(async () => {
     if (!res.ok) return
     const data = await res.json()
     if (data.status === 'completed' && data.report) {
-      report.value = data.report
+      report.value = { ...data.report, overall_score: data.overall_score }
       // 从对话轮次还原聊天记录
       for (const t of data.turns || []) {
         if (t.ai_question) store.messages.push({ role: 'ai', text: t.ai_question })

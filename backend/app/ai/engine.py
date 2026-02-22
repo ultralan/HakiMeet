@@ -23,24 +23,49 @@ class InterviewEngine:
 
     async def initialize(self):
         """加载面试上下文（简历+岗位信息）"""
+        from app.models.database import async_session, Interview
+        from sqlalchemy import select
+        async with async_session() as session:
+            result = await session.execute(select(Interview).where(Interview.id == self.interview_id))
+            self.interview_obj = result.scalar_one_or_none()
         self.rag_context = await self.rag.get_context(self.interview_id)
+
+    async def get_turn_context(self, user_input: str) -> str:
+        """根据用户当前的回答，去题库中匹配最相关的题目/答案"""
+        if not self.interview_obj or not self.interview_obj.qb_categories:
+            return ""
+        
+        # 构建过滤器：只在当前选中的分类中找
+        categories = self.interview_obj.qb_categories
+        if len(categories) == 1:
+            where = {"$and": [{"type": "question_bank"}, {"category": categories[0]}]}
+        else:
+            where = {"$and": [
+                {"type": "question_bank"},
+                {"category": {"$in": categories}}
+            ]}
+            
+        context = await self.rag.search(user_input, k=3, where=where)
+        return context
 
     def _build_system_prompt(self) -> str:
         return (
-            "你是一位资深的技术面试官，正在进行模拟面试。你的目标是帮助候选人提升面试能力。\n\n"
+            "你是一位犀利且专业的资深技术面试官，正在进行模拟面试。你的目标是精准发现并指出候选人的技术漏洞，帮助其在真实面试中避免失分。\n\n"
+            "【核心职责】\n"
+            "1. **严格参考题库**：下方提供了该面试选定的题库内容。你应该优先从中挑选题目进行提问。如果候选人的回答触及了题库中的知识点，你应该结合题库中的参考答案进行点评。\n"
+            "2. **有错必究（重点）**：对于候选人回答中的任何错误、模糊不清点或逻辑漏洞，你必须毫不留情地立即明确指出。如果候选人的回答与题库中的标准答案不符，必须给出正确的纠正。\n"
+            "3. **简历针对性**：参考候选人的简历信息，询问相关的项目经验或技术栈，并对其表述的真实性和深度进行考察。\n\n"
             "【交互方式】\n"
-            "候选人每次回答后，你应该自然地做以下一项或多项：\n"
-            "- 简短点评：指出回答中的亮点或不足（1-2句话）\n"
-            "- 知识补充：如果回答有遗漏，补充关键知识点\n"
-            "- 深挖追问：回答较浅时，追问细节或原理\n"
-            "- 换题过渡：回答充分后，自然过渡到下一个话题\n"
-            "不要每次都追问，也不要每次都换题，根据回答质量灵活决定。\n\n"
+            "候选人每次回答后，你必须按以下逻辑进行反馈：\n"
+            "- **纠错优先**：如果回答有错，第一句话就指出错误点并给出正确解释。\n"
+            "- **深度评估**：评价回答的深度（是停留在表面还是掌握了原理），指出回答中的薄弱环节。\n"
+            "- **深挖追问**：针对不确定的点进行连环追问，直到探明候选人的底细。\n"
+            "- **换题过渡**：仅在当前话题已经透彻或无法继续挖掘时，才切换到题库中的下一个话题。\n\n"
             "【基本规则】\n"
-            "- 每次只聚焦一个问题方向\n"
-            "- 难度从基础逐步递进\n"
-            "- 语气专业友好，像真实面试中的对话\n"
+            "- 不要做一个只会点头的老好人，要通过质疑和纠错来模拟真实的面试压力\n"
+            "- 语气专业且有压迫感，类似顶级大厂的面试风格\n"
             "- 用中文交流\n\n"
-            f"【面试参考资料】\n{self.rag_context}\n\n"
+            f"【面试参考资料（抽样预览）】\n{self.rag_context}\n\n"
             f"【当前进度】已问{self.turn_count}题"
         )
 

@@ -55,6 +55,16 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                             "type": "user_text",
                             "data": {"text": event.text},
                         })
+                        
+                        # 核心改进：动态 RAG 注入
+                        # 根据用户刚说完的话，去题库搜相关的知识点，推给语音引擎
+                        try:
+                            turn_context = await engine.get_turn_context(event.text)
+                            if turn_context:
+                                logger.info("触发动态 RAG 注入, 长度: %d", len(turn_context))
+                                await voice.send_rag_context(turn_context)
+                        except Exception as e:
+                            logger.error("动态 RAG 注入失败: %s", e)
                     else:
                         engine.history.append(AIMessage(content=event.text))
                         await websocket.send_json({
@@ -128,7 +138,7 @@ async def _save_report(interview_id: str, report: dict, history: list):
     try:
         summary = report.get("summary", "")
         score = None
-        m = re.search(r'总体评分[*\s]*[（(：:\s]*(\d+(?:\.\d+)?)', summary)
+        m = re.search(r'(?:总体评分|总体成绩|综合评分|评分|得分)[*\s]*[（(：:\s-]*(\d+(?:\.\d+)?)', summary)
         if m:
             score = float(m.group(1))
 

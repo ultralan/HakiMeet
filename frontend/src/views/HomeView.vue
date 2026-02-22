@@ -98,7 +98,7 @@
           @click="$router.push(`/interview/${h.id}`)">
           <div class="flex items-center gap-4">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold"
-              :class="h.score >= 80 ? 'bg-success-soft text-success' : h.score >= 60 ? 'bg-warning-soft text-warning' : 'bg-danger-soft text-danger'">
+              :class="!h.score ? 'bg-bg text-text-muted' : h.score >= 80 ? 'bg-success-soft text-success' : h.score >= 60 ? 'bg-warning-soft text-warning' : 'bg-danger-soft text-danger'">
               {{ h.score || '—' }}
             </div>
             <div>
