@@ -57,17 +57,14 @@
 git clone https://github.com/your-username/hakimeet.git
 cd hakimeet
 
-# 2. 配置环境变量（可选，仅需修改 SECRET_KEY）
-cp .env.example .env
-
-# 3. 一键启动
+# 2. 一键启动
 docker compose up -d --build
 
-# 4. 访问应用
+# 3. 访问应用
 # 前端:  http://localhost
 # 后端:  http://localhost:8000/docs (API 文档)
 
-# 5. 配置 AI 模型（首次使用）
+# 4. 配置 AI 模型（首次使用）
 # 打开 http://localhost/settings 填写您的模型密钥
 ```
 
