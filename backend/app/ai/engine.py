@@ -93,7 +93,7 @@ class InterviewEngine:
                 }
                 logger.info("使用用户自定义语音配置")
 
-        self.rag_context = await self.rag.get_context(self.interview_id, categories=categories)
+        self.rag_context = await self.rag.build_init_context(self.interview_id, categories=categories)
 
     async def get_turn_context(self, user_input: str) -> str:
         """根据用户当前回答检索相关题目，自动去重避免重复注入"""
@@ -101,17 +101,10 @@ class InterviewEngine:
             return ""
 
         categories = self.interview_obj.qb_categories
-        if len(categories) == 1:
-            where = {"$and": [{"type": "question_bank"}, {"category": categories[0]}]}
-        else:
-            where = {"$and": [
-                {"type": "question_bank"},
-                {"category": {"$in": categories}}
-            ]}
 
         # 初始化时只检索1道，后续每轮检索3道
         k = 1 if self.turn_count <= 1 else 3
-        docs = self.rag.vectorstore.similarity_search(user_input, k=k, filter=where)
+        docs = self.rag.search_qb(user_input, categories, k=k)
 
         # 去重：只保留没注入过的内容
         new_parts = []
@@ -126,9 +119,9 @@ class InterviewEngine:
         if new_parts:
             parts.append("【相关题库参考】\n" + "\n\n".join(new_parts))
 
-        # 随机出一道备选题（也走缓存去重，保证 AI 换题时有新题可用）
+        # 随机出一道备选题（也走缓存去重）
         if self.turn_count > 1:
-            for _ in range(5):  # 最多尝试5次找到未注入的题
+            for _ in range(5):
                 random_q = self.rag.random_question(categories)
                 if random_q:
                     rq_hash = hash(random_q.strip())
