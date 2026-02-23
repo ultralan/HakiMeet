@@ -53,6 +53,7 @@ export const useInterviewStore = defineStore('interview', () => {
         aiSpeaking.value = false
         if (audioPlayer) audioPlayer.flush()
       } else if (msg.type === 'error') {
+        status.value = 'error'
         messages.value.push({ role: 'system', text: msg.data.message })
       } else if (msg.type === 'report') {
         status.value = 'ended'
@@ -61,8 +62,8 @@ export const useInterviewStore = defineStore('interview', () => {
     }
 
     socket.onclose = () => {
-      if (ws.value !== socket) return // 已被替换或清理，忽略
-      if (status.value !== 'ended') status.value = 'idle'
+      if (ws.value !== socket) return
+      if (status.value !== 'ended' && status.value !== 'error') status.value = 'idle'
     }
     ws.value = socket
   }

@@ -41,8 +41,8 @@
       </div>
     </div>
 
-    <!-- Active / Initializing interview -->
-    <template v-else-if="store.status === 'initializing' || store.status === 'active' || store.status === 'ended'">
+    <!-- Active / Initializing / Error interview -->
+    <template v-else-if="['initializing', 'active', 'ended', 'error'].includes(store.status)">
       <div class="flex-1 flex overflow-hidden relative">
         <!-- Initializing overlay -->
         <div v-if="store.status === 'initializing'"
@@ -160,8 +160,8 @@
             </button>
           </div>
 
-          <!-- Ended: back button -->
-          <div v-if="store.status === 'ended'"
+          <!-- Ended / Error: back button -->
+          <div v-if="store.status === 'ended' || store.status === 'error'"
             class="border-t border-border px-5 py-4 flex justify-center">
             <router-link to="/"
               class="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-accent text-white hover:bg-accent-hover transition no-underline">
@@ -224,7 +224,7 @@ watch(() => cam.active.value, (v) => {
 })
 
 const statusLabel = computed(() => ({
-  idle: '等待开始', connecting: '连接中', initializing: '初始化中', active: '进行中', ended: '已结束'
+  idle: '等待开始', connecting: '连接中', initializing: '初始化中', active: '进行中', ended: '已结束', error: '服务异常'
 }[store.status]))
 
 const reportScoreClass = computed(() => {
@@ -254,7 +254,7 @@ watch(() => store.status, async (s, old) => {
   // 摄像头 & 录音
   if (s === 'initializing') { await nextTick(); cam.start() }
   else if (s === 'active' && old === 'initializing') { recorder.start() }
-  else if (s === 'ended' || s === 'idle') { cam.stop(); recorder.stop() }
+  else if (['ended', 'idle', 'error'].includes(s)) { cam.stop(); recorder.stop() }
 
   // ending 标记
   if (s === 'ended') ending.value = false

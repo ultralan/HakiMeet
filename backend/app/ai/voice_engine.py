@@ -80,22 +80,31 @@ class DoubaoVoiceEngine:
         req.extend(payload_bytes)
         return req
 
-    async def connect(self, system_prompt: str, retries: int = 2):
+    async def connect(self, system_prompt: str, retries: int = 2, voice_config: dict | None = None):
         """建立连接，完成 StartConnection + StartSession"""
         self._system_prompt = system_prompt
-        logger.info("正在连接豆包语音 API: %s", settings.doubao_voice_ws_url)
+        self._voice_config = voice_config
+
+        # 根据用户配置或系统默认值确定连接参数
+        ws_url = (voice_config or {}).get("ws_url") or settings.doubao_voice_ws_url
+        app_id = (voice_config or {}).get("app_id") or settings.doubao_voice_app_id
+        access_key = (voice_config or {}).get("access_key") or settings.doubao_voice_access_key
+        resource_id = (voice_config or {}).get("resource_id") or settings.doubao_voice_resource_id
+        app_key = (voice_config or {}).get("app_key") or settings.doubao_voice_app_key
+
+        logger.info("正在连接语音 API: %s (自定义=%s)", ws_url, voice_config is not None)
         headers = {
-            "X-Api-App-ID": settings.doubao_voice_app_id,
-            "X-Api-Access-Key": settings.doubao_voice_access_key,
-            "X-Api-Resource-Id": settings.doubao_voice_resource_id,
-            "X-Api-App-Key": settings.doubao_voice_app_key,
+            "X-Api-App-ID": app_id,
+            "X-Api-Access-Key": access_key,
+            "X-Api-Resource-Id": resource_id,
+            "X-Api-App-Key": app_key,
             "X-Api-Connect-Id": str(uuid.uuid4()),
         }
         last_err = None
         for attempt in range(1, retries + 1):
             try:
                 self.ws = await websockets.connect(
-                    settings.doubao_voice_ws_url,
+                    ws_url,
                     additional_headers=headers,
                     ping_interval=None,
                     open_timeout=20,
@@ -104,11 +113,11 @@ class DoubaoVoiceEngine:
                 break
             except (TimeoutError, OSError) as e:
                 last_err = e
-                logger.warning("连接豆包超时 (第%d/%d次): %s", attempt, retries, e)
+                logger.warning("连接语音超时 (第%d/%d次): %s", attempt, retries, e)
                 if attempt < retries:
                     await asyncio.sleep(1)
         else:
-            raise ConnectionError(f"豆包语音 API 连接失败 ({retries}次重试后): {last_err}") from last_err
+            raise ConnectionError(f"语音 API 连接失败 ({retries}次重试后): {last_err}") from last_err
 
         # StartConnection (event=1)
         await self.ws.send(self._build_request(1, {}, session=False))
@@ -136,20 +145,26 @@ class DoubaoVoiceEngine:
             },
         }
         await self.ws.send(self._build_request(100, session_config))
-        resp = await self.ws.recv()
-        logger.info("StartSession 响应: %s", protocol.parse_response(resp))
+        resp_bytes = await self.ws.recv()
+        resp = protocol.parse_response(resp_bytes)
+        logger.info("StartSession 响应: %s", resp)
+        
+        if resp.get('message_type') == 'SERVER_ERROR_RESPONSE':
+            error_msg = resp.get('payload_msg', {}).get('error', '未知错误')
+            code = resp.get('code')
+            raise ConnectionError(f"豆包语音 Session 启动失败 (Code: {code}): {error_msg}")
 
     async def _reconnect(self):
         """出错后自动重连"""
         self._reconnecting = True
-        logger.info("正在重连豆包语音...")
+        logger.info("正在重连语音...")
         try:
             await self.ws.close()
         except Exception:
             pass
         self.session_id = str(uuid.uuid4())
         self._audio_send_count = 0
-        await self.connect(self._system_prompt)
+        await self.connect(self._system_prompt, voice_config=getattr(self, '_voice_config', None))
         self._reconnecting = False
 
     async def say_hello(self, content: str):

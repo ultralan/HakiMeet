@@ -92,8 +92,36 @@ class RAGPipeline:
         docs = self.vectorstore.similarity_search(query, k=k, filter=where)
         return "\n\n".join(doc.page_content for doc in docs)
 
-    async def get_context(self, interview_id: str) -> str:
-        """根据面试ID获取RAG上下文（简历+题库）"""
+    def random_question(self, categories: list[str]) -> str:
+        """从指定分类中随机抽取一道题，返回题目文本"""
+        import random
+        valid_cats = list(categories or [])
+        random.shuffle(valid_cats)
+        for cat in valid_cats:
+            chunks = self.get_chunks_by_metadata(
+                {"$and": [{"type": "question_bank"}, {"category": cat}]}
+            )
+            if chunks:
+                chosen = random.choice(chunks)
+                return f"【{cat}】{chosen['content']}"
+        return ""
+
+    def similar_search(self, query: str, categories: list[str], k: int = 3) -> str:
+        """根据当前话题在题库中做相似检索，返回相关题目"""
+        if not categories:
+            return ""
+        if len(categories) == 1:
+            where = {"$and": [{"type": "question_bank"}, {"category": categories[0]}]}
+        else:
+            where = {"$and": [
+                {"type": "question_bank"},
+                {"category": {"$in": categories}},
+            ]}
+        docs = self.vectorstore.similarity_search(query, k=k, filter=where)
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    async def get_context(self, interview_id: str, categories: list[str] | None = None) -> str:
+        """根据面试ID和分类获取RAG上下文（简历+题库预览）"""
         from app.models.database import async_session, Interview
         from sqlalchemy import select
 
@@ -104,35 +132,32 @@ class RAGPipeline:
             interview = result.scalar_one_or_none()
 
         if not interview:
-            return "暂无面试参考资料，请进行通用技术面试。"
+            return ""
 
         parts = []
 
-        # 简历检索
+        # 1. 题库预览：每个分类抽 3 题，让 AI 知道本场面试的基调
+        if categories:
+            cat_previews = []
+            for cat in categories:
+                chunks = self.get_chunks_by_metadata(
+                    {"$and": [{"type": "question_bank"}, {"category": cat}]}
+                )
+                if chunks:
+                    import random
+                    samples = random.sample(chunks, min(len(chunks), 3))
+                    content = "\n".join(f"- {s['content']}" for s in samples)
+                    cat_previews.append(f"【{cat}题库预览】\n{content}")
+            if cat_previews:
+                parts.append("\n\n".join(cat_previews))
+
+        # 2. 简历检索
         if interview.resume_id:
             docs = self.vectorstore.similarity_search(
                 "简历 技术 经验", k=5,
                 filter={"resume_id": interview.resume_id},
             )
             if docs:
-                parts.append("【简历信息】\n" + "\n\n".join(d.page_content for d in docs))
+                parts.append("【候选人简历信息】\n" + "\n\n".join(d.page_content for d in docs))
 
-        # 题库：按分类均匀抽取，限制总长度避免 prompt 过长
-        import random
-        categories = interview.qb_categories or []
-        if categories:
-            per_cat = max(3, 15 // len(categories))
-            for cat in categories:
-                chunks = self.get_chunks_by_metadata(
-                    {"$and": [{"type": "question_bank"}, {"category": cat}]}
-                )
-                if chunks:
-                    sampled = random.sample(chunks, min(per_cat, len(chunks)))
-                    parts.append(f"【{cat}题库（抽取{len(sampled)}/{len(chunks)}题）】\n" + "\n\n".join(c["content"] for c in sampled))
-            # 总长度硬上限
-            full = "\n\n".join(parts)
-            if len(full) > 4000:
-                full = full[:4000]
-            return full if parts else "暂无面试参考资料，请进行通用技术面试。"
-
-        return "\n\n".join(parts) if parts else "暂无面试参考资料，请进行通用技术面试。"
+        return "\n\n".join(parts) if parts else ""

@@ -94,6 +94,48 @@ class InterviewTurn(Base):
     interview = relationship("Interview", back_populates="turns")
 
 
+class WeakPoint(Base):
+    """长期记忆：用户面试薄弱点记录，按题库分类存储"""
+    __tablename__ = "weak_points"
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    interview_id = Column(String, ForeignKey("interviews.id"), nullable=False)
+    category = Column(String(100), nullable=False)
+    question_summary = Column(Text, nullable=False)
+    weakness_desc = Column(Text, nullable=False)
+    severity = Column(Integer, default=3)
+    resolved = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user = relationship("User")
+    interview = relationship("Interview")
+
+
+class AIModelConfig(Base):
+    """用户自定义 AI 模型配置（文本模型 + 语音模型）"""
+    __tablename__ = "ai_model_configs"
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
+    # --- 文本模型配置 ---
+    provider_name = Column(String(100), default="custom")
+    api_key = Column(String(500))
+    base_url = Column(String(500))
+    model_id = Column(String(200))
+    llm_enabled = Column(Boolean, default=False)
+    # --- 语音模型配置 ---
+    voice_ws_url = Column(String(500))
+    voice_app_id = Column(String(100))
+    voice_access_key = Column(String(200))
+    voice_secret_key = Column(String(200))
+    voice_resource_id = Column(String(200))
+    voice_app_key = Column(String(200))
+    voice_enabled = Column(Boolean, default=False)
+    # --- 通用 ---
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user = relationship("User")
+
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

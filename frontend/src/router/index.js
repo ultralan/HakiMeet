@@ -6,6 +6,8 @@ const routes = [
   { path: '/resume', name: 'resume', component: () => import('../views/ResumeView.vue') },
   { path: '/question-bank', name: 'question-bank', component: () => import('../views/QuestionBankView.vue') },
   { path: '/history', name: 'history', component: () => import('../views/HistoryView.vue') },
+  { path: '/memory', name: 'memory', component: () => import('../views/MemoryView.vue') },
+  { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue') },
 ]
 
 export default createRouter({

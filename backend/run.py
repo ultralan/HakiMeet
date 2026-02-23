@@ -6,11 +6,12 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 if sys.version_info >= (3, 14):
     from typing import Any
     import pydantic.v1.fields as _pv1f
+    from pydantic.v1 import errors as _pv1e
     _orig = _pv1f.ModelField._set_default_and_type
     def _patched(self):
         try:
             _orig(self)
-        except _pv1f.errors_.ConfigError:
+        except _pv1e.ConfigError:
             self.type_ = Any
             self.outer_type_ = Any
             self.annotation = Any

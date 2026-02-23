@@ -32,10 +32,17 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
 
     voice = DoubaoVoiceEngine()
     try:
-        await voice.connect(system_prompt)
-    except (ConnectionError, TimeoutError, OSError) as e:
-        logger.error("豆包语音连接失败: %s", e)
-        await websocket.send_json({"type": "error", "data": {"message": "语音服务连接失败，请检查网络后重试"}})
+        await voice.connect(system_prompt, voice_config=engine.voice_config)
+    except Exception as e:
+        error_str = str(e)
+        user_msg = "语音服务连接失败，请检查网络后重试"
+        if "quota exceeded" in error_str.lower():
+            user_msg = "AI 语音服务配额已用尽 (Quota Exceeded)，请检查您的豆包 API 账户余额或配额设置。"
+        elif "Code:" in error_str:
+            user_msg = f"语音服务启动失败: {error_str}"
+            
+        logger.error("豆包语音连接失败: %s", error_str)
+        await websocket.send_json({"type": "error", "data": {"message": user_msg}})
         await websocket.close()
         return
     greeting = "你好，我是今天的面试官。请先做一个简单的自我介绍吧。"
@@ -56,15 +63,20 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                             "data": {"text": event.text},
                         })
                         
-                        # 核心改进：动态 RAG 注入
-                        # 根据用户刚说完的话，去题库搜相关的知识点，推给语音引擎
+                        # 动态 RAG 注入 + 面试官工具调用
                         try:
+                            engine.turn_count += 1
+                            # 工具1：相似检索 + 随机出题 + 策略指引
+                            tools_context = engine.get_interviewer_tools_context(event.text)
+                            # 工具2：基础 RAG 检索
                             turn_context = await engine.get_turn_context(event.text)
-                            if turn_context:
-                                logger.info("触发动态 RAG 注入, 长度: %d", len(turn_context))
-                                await voice.send_rag_context(turn_context)
+                            # 合并注入
+                            combined = "\n\n".join(filter(None, [turn_context, tools_context]))
+                            if combined:
+                                logger.info("触发动态 RAG + 工具注入, 长度: %d", len(combined))
+                                await voice.send_rag_context(combined)
                         except Exception as e:
-                            logger.error("动态 RAG 注入失败: %s", e)
+                            logger.error("动态 RAG/工具注入失败: %s", e)
                     else:
                         engine.history.append(AIMessage(content=event.text))
                         await websocket.send_json({
@@ -115,7 +127,9 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                         await websocket.send_json({"type": "report", "data": report})
 
                         # 持久化到数据库
-                        await _save_report(interview_id, report, engine.history)
+                        user_id = engine.interview_obj.user_id if engine.interview_obj else "demo-user"
+                        categories = engine.interview_obj.qb_categories if engine.interview_obj else []
+                        await _save_report(interview_id, report, engine.history, user_id, categories)
                         break
     except WebSocketDisconnect:
         logger.info("客户端 WebSocket 断开")
@@ -133,8 +147,8 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
         logger.info("面试会话清理完成")
 
 
-async def _save_report(interview_id: str, report: dict, history: list):
-    """将报告和对话轮次持久化到数据库"""
+async def _save_report(interview_id: str, report: dict, history: list, user_id: str = "demo-user", categories: list = None):
+    """将报告和对话轮次持久化到数据库，并触发长期记忆分析"""
     try:
         summary = report.get("summary", "")
         score = None
@@ -177,5 +191,18 @@ async def _save_report(interview_id: str, report: dict, history: list):
                 await db.execute(InterviewTurn.__table__.insert(), turns)
             await db.commit()
             logger.info("报告已保存, interview_id=%s, score=%s, turns=%d", interview_id, score, turn_num)
+
+        # 异步触发长期记忆分析（不阻塞报告返回）
+        asyncio.create_task(_analyze_memory(interview_id, user_id, history, categories or []))
+
     except Exception as e:
         logger.error("保存报告失败: %s", e)
+
+
+async def _analyze_memory(interview_id: str, user_id: str, history: list, categories: list):
+    """异步分析面试薄弱点并保存到长期记忆"""
+    try:
+        from app.ai.memory import analyze_and_save
+        await analyze_and_save(interview_id, user_id, history, categories)
+    except Exception as e:
+        logger.error("长期记忆分析失败: %s", e)

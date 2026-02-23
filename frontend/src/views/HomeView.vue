@@ -74,6 +74,35 @@
       </button>
     </div>
 
+    <!-- 建议复习 -->
+    <div v-if="suggestions.length" class="card rounded-2xl p-6 mb-8 page-enter stagger-2">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        <h2 class="text-sm font-semibold text-text">长期记忆建议</h2>
+        <span class="text-[11px] text-text-muted">AI 自动提取您的知识薄弱环节，并将在后续练习中循环强化</span>
+      </div>
+      <div class="space-y-2.5">
+        <div v-for="s in suggestions" :key="s.id"
+          class="flex items-start gap-3 rounded-xl bg-bg p-3.5 group hover:bg-warning-soft/30 transition">
+          <div class="flex gap-0.5 mt-1 shrink-0">
+            <span v-for="i in 5" :key="i"
+              class="w-1.5 h-1.5 rounded-full"
+              :class="i <= s.severity
+                ? (s.severity >= 4 ? 'bg-danger' : s.severity >= 3 ? 'bg-warning' : 'bg-accent')
+                : 'bg-border'">
+            </span>
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-soft text-accent font-medium mr-1.5">{{ s.category }}</span>
+            <span class="text-sm text-text font-medium">{{ s.question_summary }}</span>
+            <div class="text-xs text-text-muted mt-0.5">{{ s.weakness_desc }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tips -->
     <div class="card rounded-2xl p-6 mb-8 page-enter stagger-3">
       <h2 class="text-sm font-semibold text-text mb-4">面试小贴士</h2>
@@ -123,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -162,6 +191,19 @@ function toggleCat(c) {
   const i = selectedCats.value.indexOf(c)
   i === -1 ? selectedCats.value.push(c) : selectedCats.value.splice(i, 1)
 }
+
+const suggestions = ref([])
+
+// 选择分类后自动拉取长期记忆建议
+watch(selectedCats, async (cats) => {
+  if (!cats.length) { suggestions.value = []; return }
+  try {
+    const res = await fetch(`/api/memory/suggestions?categories=${cats.join(',')}`)
+    suggestions.value = await res.json()
+  } catch (e) {
+    suggestions.value = []
+  }
+}, { deep: true })
 
 const stats = ref([
   { label: '总面试次数', value: '—', sub: '', color: 'text-success', icon: 'M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2', iconBg: 'bg-accent-soft', iconColor: 'text-accent' },

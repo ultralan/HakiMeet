@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     doubao_model_id: str = "doubao-1-5-lite-32k-250115"
     # 豆包语音大模型
     doubao_voice_ws_url: str = "wss://openspeech.bytedance.com/api/v3/realtime/dialogue"
-    doubao_voice_app_id: str = "8029680877"
-    doubao_voice_access_key: str = "wq9tM3tB5lu724J0TeY9cEt4N0shDX9w"
-    doubao_voice_secret_key: str = "UuHqxoUns09A_GSwknlDHAad68LS-GJv"
+    doubao_voice_app_id: str = "7720414312"
+    doubao_voice_access_key: str = "-VRgLfKtKSjklM-3ZNgobJUr7fjPh5kD"
+    doubao_voice_secret_key: str = "rWdy_Penc97S_PP4jLbSKyHVAzAcj9bJ"
     doubao_voice_resource_id: str = "volc.speech.dialog"
     doubao_voice_app_key: str = "PlgvMymc7f3tQnJ6"
     chroma_persist_dir: str = "./chroma_db"
