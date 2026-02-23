@@ -1,18 +1,43 @@
-logs/*
-scripts/*
-frontend/**/node_modules/
-backend/__pycache__/
-backend/**/__pycache__/
-backend/*.db
-backend/chroma_db/
-backend/uploads/
-backend/.env
+# ====== Python ======
+__pycache__/
+**/__pycache__/
 *.pyc
-.env
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+# ====== Node ======
 node_modules/
 dist/
-__MACOSX
-python3.7
-logs
-.claude
+
+# ====== 数据 & 日志 ======
+*.db
+chroma_db/
+uploads/
+knowledge_base/
+logs/
+
+# ====== 环境 & 密钥 ======
+.env
+.env.*
+!.env.example
+
+# ====== IDE & 编辑器 ======
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ====== AI 助手配置 ======
+.claude/
 CLAUDE.md
+.gemini/
+
+# ====== 其他 ======
+__MACOSX/
+scripts/
+tracked_files.txt
