@@ -121,10 +121,24 @@ class InterviewEngine:
                 self._injected_cache.add(content_hash)
                 new_parts.append(doc.page_content)
 
-        if not new_parts:
-            return ""
+        parts = []
 
-        parts = ["【相关题库参考】\n" + "\n\n".join(new_parts)]
+        if new_parts:
+            parts.append("【相关题库参考】\n" + "\n\n".join(new_parts))
+
+        # 随机出一道备选题（也走缓存去重，保证 AI 换题时有新题可用）
+        if self.turn_count > 1:
+            for _ in range(5):  # 最多尝试5次找到未注入的题
+                random_q = self.rag.random_question(categories)
+                if random_q:
+                    rq_hash = hash(random_q.strip())
+                    if rq_hash not in self._injected_cache:
+                        self._injected_cache.add(rq_hash)
+                        parts.append(f"【备选题目（换题时可用）】\n{random_q}")
+                        break
+
+        if not parts:
+            return ""
 
         # 策略指引只在首次注入
         if not self._strategy_injected:
@@ -134,7 +148,7 @@ class InterviewEngine:
                 "根据候选人的回答，你可以选择以下策略之一：\n"
                 "1. 深挖追问：如果回答不够深入，继续追问原理和细节\n"
                 "2. 纠正错误：如果回答有误，先指出错误再给出正确答案\n"
-                "3. 换题：如果当前话题已经充分考察，切换到上面的参考题目"
+                "3. 换题：如果当前话题已经充分考察，切换到备选题目"
             )
 
         return "\n\n".join(parts)
