@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+*.db
+chroma_db/
+uploads/
+logs/
+node_modules/
+dist/
+.git/
+.claude/
+CLAUDE.md
+*.md

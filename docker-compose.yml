@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    container_name: hakimeet-backend
+    restart: unless-stopped
+    volumes:
+      - backend-data:/app/chroma_db
+      - backend-db:/app/hakimeet.db
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: hakimeet-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+  backend-db:
+  backend-uploads:
+  backend-logs:
