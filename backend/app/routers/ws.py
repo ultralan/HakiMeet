@@ -63,20 +63,15 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
                             "data": {"text": event.text},
                         })
                         
-                        # 动态 RAG 注入 + 面试官工具调用
+                        # 动态 RAG 注入（带缓存去重）
                         try:
                             engine.turn_count += 1
-                            # 工具1：相似检索 + 随机出题 + 策略指引
-                            tools_context = engine.get_interviewer_tools_context(event.text)
-                            # 工具2：基础 RAG 检索
-                            turn_context = await engine.get_turn_context(event.text)
-                            # 合并注入
-                            combined = "\n\n".join(filter(None, [turn_context, tools_context]))
-                            if combined:
-                                logger.info("触发动态 RAG + 工具注入, 长度: %d", len(combined))
-                                await voice.send_rag_context(combined)
+                            context = await engine.get_turn_context(event.text)
+                            if context:
+                                logger.info("触发 RAG 注入, 长度: %d (已缓存: %d 条)", len(context), len(engine._injected_cache))
+                                await voice.send_rag_context(context)
                         except Exception as e:
-                            logger.error("动态 RAG/工具注入失败: %s", e)
+                            logger.error("RAG 注入失败: %s", e)
                     else:
                         engine.history.append(AIMessage(content=event.text))
                         await websocket.send_json({

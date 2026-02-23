@@ -17,6 +17,8 @@ class InterviewEngine:
         self.weak_points_text = ""
         self.voice_config = None  # 用户自定义语音配置，会在 initialize() 中加载
         self.llm = None  # 会在 initialize() 中根据用户配置创建
+        self._injected_cache: set[str] = set()  # 已注入过的内容哈希，避免重复喂给 AI
+        self._strategy_injected = False  # 策略指引是否已注入
 
     async def initialize(self):
         """加载面试上下文（简历+岗位+长期记忆）并加载用户 AI 模型配置"""
@@ -94,11 +96,10 @@ class InterviewEngine:
         self.rag_context = await self.rag.get_context(self.interview_id, categories=categories)
 
     async def get_turn_context(self, user_input: str) -> str:
-        """根据用户当前的回答，去题库中匹配最相关的题目/答案"""
+        """根据用户当前回答检索相关题目，自动去重避免重复注入"""
         if not self.interview_obj or not self.interview_obj.qb_categories:
             return ""
-        
-        # 构建过滤器：只在当前选中的分类中找
+
         categories = self.interview_obj.qb_categories
         if len(categories) == 1:
             where = {"$and": [{"type": "question_bank"}, {"category": categories[0]}]}
@@ -107,36 +108,34 @@ class InterviewEngine:
                 {"type": "question_bank"},
                 {"category": {"$in": categories}}
             ]}
-            
-        context = await self.rag.search(user_input, k=3, where=where)
-        return context
 
-    def get_interviewer_tools_context(self, user_input: str) -> str:
-        """调用面试官工具，返回格式化的策略提示上下文"""
-        if not self.interview_obj or not self.interview_obj.qb_categories:
+        # 初始化时只检索1道，后续每轮检索3道
+        k = 1 if self.turn_count <= 1 else 3
+        docs = self.rag.vectorstore.similarity_search(user_input, k=k, filter=where)
+
+        # 去重：只保留没注入过的内容
+        new_parts = []
+        for doc in docs:
+            content_hash = hash(doc.page_content.strip())
+            if content_hash not in self._injected_cache:
+                self._injected_cache.add(content_hash)
+                new_parts.append(doc.page_content)
+
+        if not new_parts:
             return ""
 
-        categories = self.interview_obj.qb_categories
-        parts = []
+        parts = ["【相关题库参考】\n" + "\n\n".join(new_parts)]
 
-        # 工具1：相似检索 — 找到与当前话题相关的题目
-        similar = self.rag.similar_search(user_input, categories, k=2)
-        if similar:
-            parts.append(f"【相关题目检索结果】\n{similar}")
-
-        # 工具2：随机出题 — 准备一道备选题
-        random_q = self.rag.random_question(categories)
-        if random_q:
-            parts.append(f"【备选随机题目】\n{random_q}")
-
-        # 面试官策略指引
-        parts.append(
-            "【面试官行为指引】\n"
-            "根据候选人刚才的回答，你可以选择以下策略之一：\n"
-            "1. 深挖追问：如果回答不够深入，继续追问原理和细节\n"
-            "2. 纠正错误：如果回答有误，先指出错误再给出正确答案\n"
-            "3. 换题：如果当前话题已经充分考察，可以使用上面的相关题目或备选题目"
-        )
+        # 策略指引只在首次注入
+        if not self._strategy_injected:
+            self._strategy_injected = True
+            parts.append(
+                "【面试官行为指引】\n"
+                "根据候选人的回答，你可以选择以下策略之一：\n"
+                "1. 深挖追问：如果回答不够深入，继续追问原理和细节\n"
+                "2. 纠正错误：如果回答有误，先指出错误再给出正确答案\n"
+                "3. 换题：如果当前话题已经充分考察，切换到上面的参考题目"
+            )
 
         return "\n\n".join(parts)
 
