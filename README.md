@@ -57,9 +57,8 @@
 git clone https://github.com/your-username/hakimeet.git
 cd hakimeet
 
-# 2. 配置环境变量
+# 2. 配置环境变量（可选，仅需修改 SECRET_KEY）
 cp .env.example .env
-# 编辑 .env 填写您的豆包 API 密钥（或在前端模型配置页面设置）
 
 # 3. 一键启动
 docker compose up -d --build
@@ -67,6 +66,9 @@ docker compose up -d --build
 # 4. 访问应用
 # 前端:  http://localhost
 # 后端:  http://localhost:8000/docs (API 文档)
+
+# 5. 配置 AI 模型（首次使用）
+# 打开 http://localhost/settings 填写您的模型密钥
 ```
 
 #### 停止服务
@@ -115,23 +117,23 @@ npm run dev
 
 ---
 
-## ⚙️ 环境变量
+## ⚙️ 配置说明
+
+### 应用环境变量（`.env`）
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DOUBAO_API_KEY` | 豆包文本模型 API Key | — |
-| `DOUBAO_BASE_URL` | 豆包文本模型端点 | `https://ark.cn-beijing.volces.com/api/v3` |
-| `DOUBAO_MODEL_ID` | 豆包文本模型 ID | `doubao-1-5-lite-32k-250115` |
-| `DOUBAO_VOICE_WS_URL` | 语音模型 WebSocket URL | `wss://openspeech.bytedance.com/...` |
-| `DOUBAO_VOICE_APP_ID` | 语音应用 ID | — |
-| `DOUBAO_VOICE_ACCESS_KEY` | 语音 Access Key | — |
-| `DOUBAO_VOICE_SECRET_KEY` | 语音 Secret Key | — |
-| `DOUBAO_VOICE_RESOURCE_ID` | 语音资源 ID | `volc.speech.dialog` |
-| `DOUBAO_VOICE_APP_KEY` | 语音 App Key | — |
 | `SECRET_KEY` | JWT 签名密钥 | `dev-secret-change-in-production` |
 | `DATABASE_URL` | 数据库连接字符串 | `sqlite+aiosqlite:///./hakimeet.db` |
 
-> **提示**: 除了通过环境变量配置，你也可以在应用内的「模型配置」页面设置自己的文本模型和语音模型密钥。
+### AI 模型密钥（前端动态配置）
+
+所有 AI 模型密钥（文本模型 API Key、语音模型 API Key 等）均在应用内的 **「模型配置」** 页面设置，无需写入环境变量：
+
+1. 访问 `/settings` 页面
+2. **文本模型** — 开启开关，选择供应商（OpenAI / DeepSeek / 豆包 / 自定义），填写 API Key、端点和模型名称
+3. **语音模型** — 开启开关，填写豆包语音 API 的各项密钥
+4. 点击「保存配置」即可生效
 
 ---
 
