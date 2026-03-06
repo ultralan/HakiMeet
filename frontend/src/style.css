@@ -1,66 +1,399 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #f5f5f7;
+  /* 背景层次 */
+  --color-bg: #fafbfc;
+  --color-bg-secondary: #f4f6f8;
   --color-surface: #ffffff;
-  --color-surface-hover: #fafafa;
-  --color-border: #e8e8ed;
-  --color-border-light: #d1d1d6;
-  --color-text: #1a1c20;
-  --color-text-secondary: #6e6e73;
-  --color-text-muted: #aeaeb2;
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-soft: rgba(79, 70, 229, 0.07);
+  --color-surface-hover: #f8f9fa;
+  --color-surface-elevated: #ffffff;
+
+  /* 边框系统 */
+  --color-border: #e5e7eb;
+  --color-border-light: #f0f1f3;
+  --color-border-strong: #d1d5db;
+
+  /* 文字层次 */
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #cbd5e1;
+
+  /* 主色调 - 更现代的蓝紫色 */
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-accent-light: #818cf8;
+  --color-accent-soft: rgba(99, 102, 241, 0.08);
+  --color-accent-softer: rgba(99, 102, 241, 0.04);
+
+  /* 语义色彩 */
   --color-danger: #ef4444;
-  --color-danger-soft: rgba(239, 68, 68, 0.06);
+  --color-danger-soft: rgba(239, 68, 68, 0.08);
   --color-success: #10b981;
-  --color-success-soft: rgba(16, 185, 129, 0.07);
+  --color-success-soft: rgba(16, 185, 129, 0.08);
   --color-warning: #f59e0b;
-  --color-warning-soft: rgba(245, 158, 11, 0.07);
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 1px 6px rgba(0,0,0,0.02);
-  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --color-warning-soft: rgba(245, 158, 11, 0.08);
+  --color-info: #3b82f6;
+  --color-info-soft: rgba(59, 130, 246, 0.08);
+
+  /* 阴影系统 - 更精致的多层阴影 */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06);
+
+  /* 内阴影 */
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-inset-strong: inset 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
 #app { min-height: 100vh; }
 
+/* 卡片系统 */
 .card {
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  border: 1px solid var(--color-border-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .card-hover:hover {
   box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+  border-color: var(--color-border);
+}
+
+.card-elevated {
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-interactive:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px) scale(1.01);
+}
+
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* 页面进入动画 - 更流畅的缓动 */
+.page-enter {
+  animation: pageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+
+/* 按钮交互 */
+.btn-press {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.btn-press:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn-press:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-/* Page enter animation */
-.page-enter { animation: pageIn 0.35s ease both; }
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* 玻璃态效果 */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
-.stagger-1 { animation-delay: 0.04s; }
-.stagger-2 { animation-delay: 0.08s; }
-.stagger-3 { animation-delay: 0.12s; }
-.stagger-4 { animation-delay: 0.16s; }
 
-/* Button press */
-.btn-press { transition: all 0.15s ease; }
-.btn-press:active:not(:disabled) { transform: scale(0.97); }
+.glass-dark {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+/* 渐变光效 */
+.glow-accent {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.1);
+}
+
+.glow-success {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.1);
+}
+
+/* 脉冲动画 */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 滚动条 - 更精致 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* 输入框焦点环 */
+.focus-ring {
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.focus-ring:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+/* 微光效果 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ========================================
+   Arco Design 全局样式覆盖
+   ======================================== */
+
+/* 主题色覆盖 - 使用自定义的 accent 色 */
+:root {
+  --primary-6: 99, 102, 241;
+  --primary-5: 79, 70, 229;
+  --primary-4: 129, 140, 248;
+  --primary-7: 67, 56, 202;
+}
+
+/* 按钮组件 */
+.arco-btn {
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-xs);
+}
+
+.arco-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.arco-btn:active {
+  transform: scale(0.98);
+}
+
+.arco-btn-primary {
+  background: linear-gradient(135deg, rgb(var(--primary-6)) 0%, rgb(var(--primary-5)) 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(var(--primary-6), 0.3);
+}
+
+.arco-btn-primary:hover {
+  box-shadow: 0 6px 16px rgba(var(--primary-6), 0.4);
+}
+
+/* 输入框组件 */
+.arco-input-wrapper,
+.arco-textarea-wrapper {
+  border-radius: 12px;
+  border: 2px solid var(--color-border-light);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.arco-input-wrapper:hover,
+.arco-textarea-wrapper:hover {
+  border-color: var(--color-border);
+}
+
+.arco-input-wrapper.arco-input-focus,
+.arco-textarea-wrapper.arco-textarea-focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+/* 下拉框组件 */
+.arco-select-view {
+  border-radius: 12px;
+  border: 2px solid var(--color-border-light);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.arco-select-view:hover {
+  border-color: var(--color-border);
+}
+
+.arco-select-view-focus {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 3px var(--color-accent-soft) !important;
+}
+
+.arco-select-dropdown {
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border-light);
+}
+
+.arco-select-option {
+  border-radius: 8px;
+  margin: 2px 4px;
+  transition: all 0.15s ease;
+}
+
+.arco-select-option:hover {
+  background: var(--color-surface-hover);
+}
+
+/* 标签组件 */
+.arco-tag {
+  border-radius: 10px;
+  font-weight: 500;
+  border: 2px solid var(--color-border-light);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.arco-tag-checkable {
+  cursor: pointer;
+}
+
+.arco-tag-checkable:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.arco-tag-checked {
+  background: linear-gradient(135deg, rgb(var(--primary-6)) 0%, rgb(var(--primary-5)) 100%) !important;
+  border-color: rgb(var(--primary-6)) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-6), 0.3);
+}
+
+/* 卡片组件 */
+.arco-card {
+  border-radius: 16px;
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.arco-card-bordered {
+  border-color: var(--color-border-light);
+}
+
+.arco-card-header {
+  border-bottom: 1px solid var(--color-border-light);
+  padding: 16px 20px;
+}
+
+.arco-card-body {
+  padding: 20px;
+}
+
+/* 模态框组件 */
+.arco-modal {
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+}
+
+.arco-modal-header {
+  border-bottom: 1px solid var(--color-border-light);
+  padding: 20px 24px;
+}
+
+.arco-modal-body {
+  padding: 24px;
+}
+
+.arco-modal-footer {
+  border-top: 1px solid var(--color-border-light);
+  padding: 16px 24px;
+}
+
+/* 通知组件 */
+.arco-message,
+.arco-notification {
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border-light);
+}
+
+/* 加载状态 */
+.arco-spin {
+  color: var(--color-accent);
+}
+
+/* 禁用状态统一样式 */
+.arco-btn-disabled,
+.arco-input-disabled,
+.arco-select-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 空状态 */
+.arco-empty {
+  color: var(--color-text-muted);
+}
+

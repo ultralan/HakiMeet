@@ -1,33 +1,62 @@
 <template>
   <div class="flex h-screen bg-bg" v-if="showLayout">
     <!-- Sidebar -->
-    <aside class="w-56 shrink-0 bg-surface flex flex-col border-r border-border/60">
-      <div class="px-5 py-6">
-        <router-link to="/" class="flex items-center gap-2.5 no-underline group">
-          <div class="w-8 h-8 rounded-[10px] bg-accent flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-            <span class="text-white text-xs font-bold tracking-tight">H</span>
+    <aside class="w-64 shrink-0 bg-surface flex flex-col border-r border-border relative">
+      <!-- 顶部渐变装饰 -->
+      <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-accent-softer to-transparent pointer-events-none"></div>
+
+      <div class="px-4 py-5 relative">
+        <router-link to="/" class="flex items-center gap-3 no-underline group">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+            <span class="text-white text-sm font-bold tracking-tight">H</span>
           </div>
-          <span class="text-text font-semibold text-[15px]">HakiMeet</span>
+          <div class="flex flex-col">
+            <span class="text-text font-bold text-[15px] tracking-tight">HakiMeet</span>
+            <span class="text-text-muted text-[11px] font-medium">AI 模拟面试</span>
+          </div>
         </router-link>
       </div>
 
-      <nav class="flex-1 px-3 space-y-0.5">
+      <!-- Quick Stats -->
+      <div class="px-4 mb-3 relative">
+        <div class="stat-mini-card">
+          <div class="flex items-center justify-between mb-2">
+            <span class="stat-mini-label">本周练习</span>
+            <span class="stat-mini-value">{{ weekStats.count }}</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px]">
+            <div class="flex items-center gap-1 text-text-muted">
+              <Target :size="11" />
+              <span>{{ weekStats.avgScore }}分</span>
+            </div>
+            <div class="flex items-center gap-1 text-success">
+              <TrendingUp :size="11" />
+              <span>+{{ weekStats.improvement }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-4 space-y-1 relative">
         <router-link v-for="item in navItems" :key="item.to" :to="item.to"
           class="nav-link" active-class="nav-active">
-          <component :is="item.icon" />
-          <span>{{ item.label }}</span>
+          <component :is="item.icon" :size="18" />
+          <span class="flex-1">{{ item.label }}</span>
         </router-link>
       </nav>
 
-      <div class="px-4 py-4 border-t border-border/60 mx-3 mb-2">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center">
-            <span class="text-accent text-[11px] font-semibold">U</span>
+      <div class="px-4 py-3 border-t border-border mx-4 mb-2 relative">
+        <div class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-surface-hover transition-all duration-200 cursor-pointer group">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 via-accent/10 to-transparent flex items-center justify-center ring-1 ring-accent-soft group-hover:ring-accent/20 transition-all">
+            <span class="text-accent text-[11px] font-bold">U</span>
           </div>
-          <div>
-            <div class="text-text text-[13px] font-medium leading-tight">访客用户</div>
-            <div class="text-text-muted text-[11px]">免费版</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-text text-[12px] font-semibold leading-tight">访客用户</div>
+            <div class="text-text-muted text-[10px] font-medium">免费版 · 已用 3/10 次</div>
           </div>
+          <svg class="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
         </div>
       </div>
     </aside>
@@ -62,27 +91,30 @@
 </template>
 
 <script setup>
-import { computed, h } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useConfirm } from './composables/useConfirm'
+import { Home, GraduationCap, BookOpen, History, FileText, Shield, Settings, Target, TrendingUp } from 'lucide-vue-next'
 
 const modal = useConfirm()
 
 const route = useRoute()
 const showLayout = computed(() => !route.path.startsWith('/interview'))
 
-const Icon = (paths) => () => h('svg', {
-  class: 'w-[16px] h-[16px] shrink-0', viewBox: '0 0 24 24', fill: 'none',
-  stroke: 'currentColor', 'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
-}, paths.map(d => h('path', { d })))
+const weekStats = ref({
+  count: 12,
+  avgScore: 78,
+  improvement: 15
+})
 
 const navItems = [
-  { to: '/', label: '仪表盘', icon: Icon(['M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z', 'M9 22V12h6v10']) },
-  { to: '/resume', label: '简历管理', icon: Icon(['M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8', 'M10 9H8']) },
-  { to: '/question-bank', label: '题库管理', icon: Icon(['M4 19.5A2.5 2.5 0 016.5 17H20', 'M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z']) },
-  { to: '/memory', label: '长期记忆', icon: Icon(['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M12 8v4', 'M12 16h.01']) },
-  { to: '/history', label: '面试记录', icon: Icon(['M12 8v4l3 3', 'M3.05 11a9 9 0 1118 2 9 9 0 01-18-2z']) },
-  { to: '/settings', label: '模型配置', icon: Icon(['M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z', 'M12 15a3 3 0 100-6 3 3 0 000 6z']) },
+  { to: '/', label: '仪表盘', icon: Home },
+  { to: '/learning', label: '学习中心', icon: GraduationCap },
+  { to: '/question-bank', label: '题库管理', icon: BookOpen },
+  { to: '/history', label: '面试记录', icon: History },
+  { to: '/resume', label: '简历管理', icon: FileText },
+  { to: '/memory', label: '长期记忆', icon: Shield },
+  { to: '/settings', label: '模型配置', icon: Settings },
 ]
 </script>
 
@@ -93,25 +125,80 @@ const navItems = [
 </style>
 
 <style scoped>
+/* Quick Stats Card */
+.stat-mini-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.stat-mini-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.stat-mini-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #6366f1;
+  line-height: 1;
+}
+
+/* Navigation */
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 0.5rem;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.625rem;
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-accent);
+  transform: scaleY(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 2px 2px 0;
+}
+
 .nav-link:hover {
   background: var(--color-surface-hover);
   color: var(--color-text);
 }
+
+.nav-link:hover::before {
+  transform: scaleY(0.5);
+}
+
 .nav-active {
-  background: var(--color-accent-soft);
+  background: linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-accent-softer) 100%);
   color: var(--color-accent);
-  box-shadow: inset 3px 0 0 var(--color-accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+.nav-active::before {
+  transform: scaleY(1);
+}
+
+.nav-active:hover {
+  background: linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-accent-softer) 100%);
 }
 </style>

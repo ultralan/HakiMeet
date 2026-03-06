@@ -1,3 +1,16 @@
+# Python 3.14 兼容性补丁：必须在导入其他模块之前应用
+try:
+    from websockets.asyncio.connection import Connection
+    _orig_connection_lost = Connection.connection_lost
+    def _patched_connection_lost(self, exc):
+        if not hasattr(self, 'recv_messages'):
+            return
+        _orig_connection_lost(self, exc)
+    Connection.connection_lost = _patched_connection_lost
+    print("[PATCH] websockets Python 3.14 补丁已应用")
+except Exception as e:
+    print(f"[PATCH] 补丁应用失败: {e}")
+
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path

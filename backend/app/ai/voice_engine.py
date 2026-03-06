@@ -14,6 +14,18 @@ from app.config import settings
 
 logger = logging.getLogger("hakimeet.voice")
 
+# Python 3.14 兼容性补丁：修复 websockets 库的 recv_messages 属性错误
+try:
+    from websockets.asyncio.connection import ClientConnection
+    _orig_connection_lost = ClientConnection.connection_lost
+    def _patched_connection_lost(self, exc):
+        if not hasattr(self, 'recv_messages'):
+            return
+        _orig_connection_lost(self, exc)
+    ClientConnection.connection_lost = _patched_connection_lost
+except Exception:
+    pass
+
 
 def _sanitize(text: str) -> str:
     """移除控制字符和 YAML 不安全字符，保留换行和空格"""

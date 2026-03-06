@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY req uirements.txt .
 
 # 先装 CPU 版 PyTorch（~200MB vs GPU版 ~2GB），再装其余依赖
 RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
