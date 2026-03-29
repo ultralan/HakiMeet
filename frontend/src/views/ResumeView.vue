@@ -189,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useUpload } from '../composables/useUpload'
 import { Upload, Lock, FileText, Trash2, CheckCircle, Tag, TrendingUp, Sparkles } from 'lucide-vue-next'
 

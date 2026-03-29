@@ -24,10 +24,14 @@ logger = logging.getLogger("hakimeet.rag")
 _rag_instance = None
 
 
-def get_rag() -> "RAGPipeline":
+def get_rag() -> "RAGPipeline | None":
     global _rag_instance
     if _rag_instance is None:
-        _rag_instance = RAGPipeline()
+        try:
+            _rag_instance = RAGPipeline()
+        except Exception:
+            logger.exception("RAG 初始化失败，将以无向量检索模式继续运行")
+            return None
     return _rag_instance
 
 

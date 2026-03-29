@@ -118,6 +118,7 @@ class DoubaoVoiceEngine:
                 self.ws = await websockets.connect(
                     ws_url,
                     additional_headers=headers,
+                    proxy=None,
                     ping_interval=None,
                     open_timeout=20,
                 )

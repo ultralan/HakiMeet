@@ -25,10 +25,19 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
     init_msg = await websocket.receive_text()
     logger.info("收到初始化消息: %s", init_msg)
 
-    engine = InterviewEngine(interview_id)
-    await engine.initialize()
-    system_prompt = engine._build_system_prompt()
-    logger.info("System prompt 长度: %d, RAG上下文: %s", len(system_prompt), engine.rag_context[:100])
+    try:
+        engine = InterviewEngine(interview_id)
+        await engine.initialize()
+        system_prompt = engine._build_system_prompt()
+        logger.info("System prompt 长度: %d, RAG上下文: %s", len(system_prompt), engine.rag_context[:100])
+    except Exception as e:
+        logger.exception("面试引擎初始化失败: interview_id=%s", interview_id)
+        await websocket.send_json({
+            "type": "error",
+            "data": {"message": f"面试初始化失败，请稍后重试。详细原因: {e}"},
+        })
+        await websocket.close()
+        return
 
     voice = DoubaoVoiceEngine()
     try:
@@ -100,6 +109,9 @@ async def interview_ws(websocket: WebSocket, interview_id: str):
     try:
         while True:
             msg = await websocket.receive()
+            if msg["type"] == "websocket.disconnect":
+                logger.info("客户端主动断开 WebSocket")
+                break
 
             if msg.get("bytes"):
                 await voice.send_audio(msg["bytes"])

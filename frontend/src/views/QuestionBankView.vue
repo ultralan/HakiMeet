@@ -16,33 +16,32 @@
             <div class="stat-icon">
               <BookOpen :size="14" />
             </div>
-            <div class="stat-label">题库总数</div>
+            <div class="stat-label">题库文件</div>
           </div>
-          <div class="stat-value">{{ totalQuestions }}<span class="stat-unit">道</span></div>
+          <div class="stat-value">{{ list.length }}<span class="stat-unit">个</span></div>
           <div class="stat-detail">{{ list.length }} 个文件</div>
         </div>
-
 
         <div class="stat-card">
           <div class="stat-header">
             <div class="stat-icon success">
               <CheckCircle :size="14" />
             </div>
-            <div class="stat-label">已练习</div>
+            <div class="stat-label">已向量化</div>
           </div>
-          <div class="stat-value">{{ practicedQuestions }}<span class="stat-unit">道</span></div>
-          <div class="stat-detail success">{{ Math.round(practicedQuestions/totalQuestions*100) }}% 完成度</div>
+          <div class="stat-value">{{ vectorizedCount }}<span class="stat-unit">个</span></div>
+          <div class="stat-detail success">可用于检索与出题</div>
         </div>
 
         <div class="stat-card">
           <div class="stat-header">
             <div class="stat-icon warning">
-              <TrendingUp :size="14" />
+              <Layers :size="14" />
             </div>
-            <div class="stat-label">通过率</div>
+            <div class="stat-label">分类总数</div>
           </div>
-          <div class="stat-value">{{ overallPassRate }}<span class="stat-unit">%</span></div>
-          <div class="stat-detail">平均正确率</div>
+          <div class="stat-value">{{ presetCats.length }}<span class="stat-unit">个</span></div>
+          <div class="stat-detail">系统可选分类</div>
         </div>
 
         <div class="stat-card">
@@ -50,10 +49,10 @@
             <div class="stat-icon danger">
               <Layers :size="14" />
             </div>
-            <div class="stat-label">分类数量</div>
+            <div class="stat-label">已使用分类</div>
           </div>
-          <div class="stat-value">{{ presetCats.length }}<span class="stat-unit">个</span></div>
-          <div class="stat-detail">{{ groupedCats.length }} 个已使用</div>
+          <div class="stat-value">{{ groupedCats.length }}<span class="stat-unit">个</span></div>
+          <div class="stat-detail">{{ groupedCats.length }} 个分类已有题库</div>
         </div>
       </div>
     </section>
@@ -127,117 +126,6 @@
       </div>
     </section>
 
-    <!-- 难度分布 & 分类分析 -->
-    <section class="analysis-section">
-      <div class="analysis-grid">
-        <div class="analysis-card">
-          <div class="analysis-header">
-            <div class="analysis-icon">
-              <BarChart3 :size="16" />
-            </div>
-            <div>
-              <h3 class="analysis-title">难度分布</h3>
-              <p class="analysis-subtitle">各难度题目数量</p>
-            </div>
-          </div>
-
-          <div class="difficulty-list">
-            <div v-for="diff in difficultyDistribution" :key="diff.level" class="difficulty-item">
-              <div class="difficulty-header">
-                <div class="difficulty-info">
-                  <span class="difficulty-label">{{ diff.label }}</span>
-                  <span class="difficulty-count" :class="diff.level">{{ diff.count }} 道</span>
-                </div>
-                <span class="difficulty-percent">{{ diff.percentage }}%</span>
-              </div>
-              <div class="difficulty-bar">
-                <div class="difficulty-bar-fill" :class="diff.level" :style="{ width: diff.percentage + '%' }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="analysis-card">
-          <div class="analysis-header">
-            <div class="analysis-icon category">
-              <Layers :size="16" />
-            </div>
-            <div>
-              <h3 class="analysis-title">分类分析</h3>
-              <p class="analysis-subtitle">各分类题目占比</p>
-            </div>
-          </div>
-
-          <div class="category-list">
-            <div v-for="cat in categoryAnalysis" :key="cat.name" class="category-item">
-              <div class="category-count">{{ cat.count }}</div>
-              <div class="category-content">
-                <div class="category-name">{{ cat.name }}</div>
-                <div class="category-progress">
-                  <div class="category-bar">
-                    <div class="category-bar-fill" :style="{ width: cat.percentage + '%' }"></div>
-                  </div>
-                  <span class="category-percent">{{ cat.percentage }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 热门题目 -->
-    <section class="hot-section">
-      <div class="hot-card">
-        <div class="hot-header">
-          <div class="hot-icon">
-            <Zap :size="16" />
-          </div>
-          <div>
-            <h3 class="hot-title">热门题目</h3>
-            <p class="hot-subtitle">最近被练习最多的题目</p>
-          </div>
-        </div>
-
-        <div class="hot-grid">
-          <div v-for="q in hotQuestions" :key="q.id" @click="startQuestionPractice(q)" class="hot-item">
-            <div class="hot-rank" :class="q.difficulty">{{ q.rank }}</div>
-            <div class="hot-content">
-              <div class="hot-question-title">{{ q.title }}</div>
-              <div class="hot-tags">
-                <span class="hot-difficulty" :class="q.difficulty">
-                  {{ q.difficulty === 'hard' ? '困难' : q.difficulty === 'medium' ? '中等' : '简单' }}
-                </span>
-                <span class="hot-category">{{ q.category }}</span>
-              </div>
-              <div class="hot-stats">
-                <span class="hot-stat">
-                  <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                  </svg>
-                  {{ q.attempts }}人练习
-                </span>
-                <span class="hot-stat">
-                  <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
-                    <path d="M22 4L12 14.01l-3-3"/>
-                  </svg>
-                  {{ q.passRate }}%通过
-                </span>
-              </div>
-            </div>
-            <div class="hot-arrow">
-              <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Grouped list -->
     <section v-for="(cat, ci) in groupedCats" :key="cat" class="list-section">
       <div class="list-header">
@@ -291,11 +179,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useUpload } from '../composables/useUpload'
-import { Upload, BookOpen, Zap, Users, CheckCircle, Trash2, ChevronRight, TrendingUp, Layers, BarChart3 } from 'lucide-vue-next'
+import { Upload, BookOpen, CheckCircle, Trash2, Layers } from 'lucide-vue-next'
 
-const router = useRouter()
 const API = '/api/qb'
 const list = ref([])
 const file = ref(null)
@@ -306,39 +192,6 @@ const up = useUpload()
 const uploadTip = ref(false)
 const catDropOpen = ref(false)
 const catDropRef = ref(null)
-
-// 题库统计数据
-const totalQuestions = ref(328)
-const practicedQuestions = ref(156)
-const overallPassRate = ref(78)
-
-// 难度分布
-const difficultyDistribution = ref([
-  { level: 'easy', label: '简单', count: 145, percentage: 44 },
-  { level: 'medium', label: '中等', count: 132, percentage: 40 },
-  { level: 'hard', label: '困难', count: 51, percentage: 16 },
-])
-
-// 分类分析
-const categoryAnalysis = ref([
-  { name: '数组与字符串', count: 68, percentage: 21, color: 'bg-gradient-to-br from-accent to-accent-hover text-white' },
-  { name: '链表与树', count: 52, percentage: 16, color: 'bg-gradient-to-br from-success to-success/80 text-white' },
-  { name: '动态规划', count: 45, percentage: 14, color: 'bg-gradient-to-br from-warning to-warning/80 text-white' },
-  { name: '图算法', count: 38, percentage: 12, color: 'bg-gradient-to-br from-danger to-danger/80 text-white' },
-  { name: '系统设计', count: 125, percentage: 37, color: 'bg-gradient-to-br from-purple-500 to-purple-600 text-white' },
-])
-
-const hotQuestions = ref([
-  { id: 1, rank: 1, title: '两数之和', difficulty: 'easy', category: '数组', attempts: 1234, passRate: 85 },
-  { id: 2, rank: 2, title: '反转链表', difficulty: 'easy', category: '链表', attempts: 987, passRate: 78 },
-  { id: 3, rank: 3, title: '二叉树的最大深度', difficulty: 'medium', category: '树', attempts: 856, passRate: 72 },
-  { id: 4, rank: 4, title: '合并两个有序数组', difficulty: 'easy', category: '数组', attempts: 745, passRate: 88 },
-])
-
-function startQuestionPractice(question) {
-  // 这里可以实现题目练习的逻辑，暂时只是一个占位符
-  console.log('开始练习题目:', question.title)
-}
 
 function onClickOutside(e) {
   if (catDropRef.value && !catDropRef.value.contains(e.target)) catDropOpen.value = false
@@ -354,6 +207,7 @@ const grouped = computed(() => {
   return g
 })
 const groupedCats = computed(() => Object.keys(grouped.value))
+const vectorizedCount = computed(() => list.value.filter((qb) => qb.vectorized).length)
 
 const onFile = (e) => { file.value = e.target.files[0] }
 
@@ -846,420 +700,6 @@ onMounted(load)
 .tip-close:hover {
   background: rgba(0, 0, 0, 0.05);
   color: #0f172a;
-}
-
-/* Analysis Section */
-.analysis-section {
-  margin-bottom: 20px;
-}
-
-.analysis-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.analysis-card {
-  padding: 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.analysis-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.analysis-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6366f1;
-}
-
-.analysis-icon.category {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
-  color: #10b981;
-}
-
-.analysis-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
-}
-
-.analysis-subtitle {
-  font-size: 11px;
-  color: #475569;
-  margin: 2px 0 0 0;
-}
-
-.difficulty-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.difficulty-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.difficulty-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.difficulty-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.difficulty-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.difficulty-count {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-.difficulty-count.easy {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #16a34a;
-}
-
-.difficulty-count.medium {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #d97706;
-}
-
-.difficulty-count.hard {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #dc2626;
-}
-
-.difficulty-percent {
-  font-size: 11px;
-  font-weight: 700;
-  color: #475569;
-}
-
-.difficulty-bar {
-  width: 100%;
-  height: 6px;
-  background: #f1f5f9;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.difficulty-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-.difficulty-bar-fill.easy {
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-}
-
-.difficulty-bar-fill.medium {
-  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-}
-
-.difficulty-bar-fill.hard {
-  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-}
-
-/* Category List */
-.category-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.category-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.category-item:hover {
-  border-color: #6366f1;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
-}
-
-.category-count {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
-  transition: all 0.2s;
-}
-
-.category-item:hover .category-count {
-  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
-}
-
-.category-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.category-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 4px;
-}
-
-.category-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.category-bar {
-  flex: 1;
-  height: 6px;
-  background: #f1f5f9;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.category-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
-  transition: width 0.5s ease;
-}
-
-.category-percent {
-  font-size: 11px;
-  font-weight: 700;
-  color: #475569;
-}
-
-/* Hot Section */
-.hot-section {
-  margin-bottom: 20px;
-}
-
-.hot-card {
-  padding: 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.hot-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.hot-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ef4444;
-}
-
-.hot-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
-}
-
-.hot-subtitle {
-  font-size: 11px;
-  color: #475569;
-  margin: 2px 0 0 0;
-}
-
-.hot-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.hot-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.hot-item:hover {
-  border-color: #6366f1;
-  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.1);
-}
-
-.hot-rank {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
-}
-
-.hot-rank.easy {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.hot-rank.medium {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.hot-rank.hard {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.hot-item:hover .hot-rank {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.hot-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.hot-question-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 6px;
-  transition: color 0.2s;
-}
-
-.hot-item:hover .hot-question-title {
-  color: #6366f1;
-}
-
-.hot-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.hot-difficulty {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-.hot-difficulty.easy {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #16a34a;
-}
-
-.hot-difficulty.medium {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #d97706;
-}
-
-.hot-difficulty.hard {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #dc2626;
-}
-
-.hot-category {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  font-weight: 700;
-}
-
-.hot-stats {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.hot-stat {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: #475569;
-  font-weight: 500;
-}
-
-.stat-icon {
-  width: 12px;
-  height: 12px;
-  opacity: 0.6;
-}
-
-.hot-arrow {
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.hot-item:hover .hot-arrow {
-  opacity: 1;
-}
-
-.arrow-icon {
-  width: 20px;
-  height: 20px;
-  color: #6366f1;
 }
 
 /* List Section */

@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
@@ -9,6 +10,7 @@ from app.models.database import get_db, QuestionBank
 from app.schemas.models import QuestionBankOut, ChunkOut
 
 router = APIRouter()
+logger = logging.getLogger("hakimeet.question_bank")
 
 UPLOAD_DIR = Path("uploads/question_banks")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,11 +48,17 @@ async def upload_question_bank(
 
     from app.ai.rag import get_rag
     rag = get_rag()
-    metadata = {"type": "question_bank", "category": category, "qb_id": qb.id}
-    await rag.ingest_questions(raw_text, metadata=metadata)
-    qb.vectorized = True
-    await db.commit()
-    await db.refresh(qb)
+    if rag:
+        try:
+            metadata = {"type": "question_bank", "category": category, "qb_id": qb.id}
+            await rag.ingest_questions(raw_text, metadata=metadata)
+            qb.vectorized = True
+            await db.commit()
+            await db.refresh(qb)
+        except Exception:
+            logger.exception("题库向量化失败，保留原始上传记录: qb_id=%s", qb.id)
+    else:
+        logger.warning("RAG 不可用，题库已上传但未向量化: qb_id=%s", qb.id)
 
     return qb
 
@@ -88,7 +96,12 @@ async def delete_question_bank(qb_id: str, db: AsyncSession = Depends(get_db)):
     if qb.file_path and os.path.exists(qb.file_path):
         os.remove(qb.file_path)
     from app.ai.rag import get_rag
-    get_rag().delete_by_metadata({"qb_id": qb_id})
+    rag = get_rag()
+    if rag:
+        try:
+            rag.delete_by_metadata({"qb_id": qb_id})
+        except Exception:
+            logger.exception("删除题库向量数据失败，继续删除题库记录: qb_id=%s", qb_id)
     await db.delete(qb)
     await db.commit()
     return {"status": "deleted"}
@@ -97,4 +110,11 @@ async def delete_question_bank(qb_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/{qb_id}/chunks", response_model=list[ChunkOut])
 async def get_chunks(qb_id: str):
     from app.ai.rag import get_rag
-    return get_rag().get_chunks_by_metadata({"qb_id": qb_id})
+    rag = get_rag()
+    if not rag:
+        return []
+    try:
+        return rag.get_chunks_by_metadata({"qb_id": qb_id})
+    except Exception:
+        logger.exception("读取题库文本块失败: qb_id=%s", qb_id)
+        return []

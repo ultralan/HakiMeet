@@ -1,6 +1,5 @@
 import os, sys
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 # Python 3.14 兼容性补丁：修复 websockets 库
 try:

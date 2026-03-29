@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -10,6 +11,7 @@ from app.models.database import get_db, Resume
 from app.schemas.models import ResumeOut
 
 router = APIRouter()
+logger = logging.getLogger("hakimeet.resume")
 
 UPLOAD_DIR = Path("uploads/resumes")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,14 +52,20 @@ async def upload_resume(
     # 向量化简历内容
     from app.ai.rag import get_rag
     rag = get_rag()
-    metadata = {"resume_id": resume.id, "type": "resume"}
-    if suffix == ".pdf":
-        await rag.ingest_pdf(str(file_path), metadata=metadata)
+    if rag:
+        try:
+            metadata = {"resume_id": resume.id, "type": "resume"}
+            if suffix == ".pdf":
+                await rag.ingest_pdf(str(file_path), metadata=metadata)
+            else:
+                await rag.ingest_text(raw_text, metadata=metadata)
+            resume.vectorized = True
+            await db.commit()
+            await db.refresh(resume)
+        except Exception:
+            logger.exception("简历向量化失败，保留原始上传记录: resume_id=%s", resume.id)
     else:
-        await rag.ingest_text(raw_text, metadata=metadata)
-    resume.vectorized = True
-    await db.commit()
-    await db.refresh(resume)
+        logger.warning("RAG 不可用，简历已上传但未向量化: resume_id=%s", resume.id)
 
     return resume
 

@@ -5,6 +5,8 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from app.config import settings
 from app.ai.rag import get_rag
 
+logger = logging.getLogger("hakimeet.engine")
+
 
 class InterviewEngine:
     """面试引擎：管理 RAG 上下文、薄弱点注入、报告生成（对话交互由语音引擎负责）"""
@@ -27,8 +29,7 @@ class InterviewEngine:
         async with async_session() as session:
             result = await session.execute(select(Interview).where(Interview.id == self.interview_id))
             self.interview_obj = result.scalar_one_or_none()
-            
-            logger = logging.getLogger("hakimeet.engine")
+
             logger.info("初始化面试引擎: ID=%s, 分类=%s", 
                         self.interview_id, 
                         self.interview_obj.qb_categories if self.interview_obj else "None")
@@ -93,11 +94,15 @@ class InterviewEngine:
                 }
                 logger.info("使用用户自定义语音配置")
 
-        self.rag_context = await self.rag.build_init_context(self.interview_id, categories=categories)
+        if self.rag:
+            self.rag_context = await self.rag.build_init_context(self.interview_id, categories=categories)
+        else:
+            logger.warning("RAG 不可用，当前面试将跳过题库检索与简历向量上下文")
+            self.rag_context = ""
 
     async def get_turn_context(self, user_input: str) -> str:
         """根据用户当前回答检索相关题目，自动去重避免重复注入"""
-        if not self.interview_obj or not self.interview_obj.qb_categories:
+        if not self.rag or not self.interview_obj or not self.interview_obj.qb_categories:
             return ""
 
         categories = self.interview_obj.qb_categories

@@ -11,6 +11,11 @@ export const useInterviewStore = defineStore('interview', () => {
   // 外部注入的音频播放器
   let audioPlayer = null
   function setAudioPlayer(player) { audioPlayer = player }
+  function pushSystemMessage(text) {
+    const last = messages.value[messages.value.length - 1]
+    if (last?.role === 'system' && last.text === text) return
+    messages.value.push({ role: 'system', text })
+  }
 
   function connect(interviewId) {
     // 关闭旧连接
@@ -28,6 +33,14 @@ export const useInterviewStore = defineStore('interview', () => {
     socket.onopen = () => {
       socket.send(JSON.stringify({ mode: 'voice' }))
       status.value = 'initializing'
+    }
+
+    socket.onerror = () => {
+      if (ws.value !== socket) return
+      if (status.value === 'connecting' || status.value === 'initializing') {
+        status.value = 'error'
+        pushSystemMessage('面试服务初始化失败，请稍后重试。')
+      }
     }
 
     socket.onmessage = (event) => {
@@ -54,15 +67,20 @@ export const useInterviewStore = defineStore('interview', () => {
         if (audioPlayer) audioPlayer.flush()
       } else if (msg.type === 'error') {
         status.value = 'error'
-        messages.value.push({ role: 'system', text: msg.data.message })
+        pushSystemMessage(msg.data.message)
       } else if (msg.type === 'report') {
         status.value = 'ended'
-        messages.value.push({ role: 'system', text: msg.data.summary })
+        pushSystemMessage(msg.data.summary)
       }
     }
 
     socket.onclose = () => {
       if (ws.value !== socket) return
+      if (status.value === 'connecting' || status.value === 'initializing') {
+        status.value = 'error'
+        pushSystemMessage('面试服务初始化失败，请稍后重试。')
+        return
+      }
       if (status.value !== 'ended' && status.value !== 'error') status.value = 'idle'
     }
     ws.value = socket
