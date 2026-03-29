@@ -1,5 +1,7 @@
-# Vue 3 + Vite
+# HakiMeet Frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+![HakiMeet 首页预览](../resources/start.png)
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+这里是 HakiMeet 的前端应用，基于 Vue 3 和 Vite，负责首页仪表盘、题库管理、简历管理、历史记录和实时面试界面。
+
+完整的项目介绍、部署方式和更多界面说明见仓库根目录的 [README](../README.md)。

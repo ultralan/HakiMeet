@@ -1,180 +1,107 @@
-# HakiMeet — AI 模拟面试平台
+# HakiMeet
 
-<p align="center">
-  <strong>🎙️ AI 驱动的实时语音模拟面试 · 让每一次练习都像真实面试</strong>
-</p>
+HakiMeet 是一个 AI 模拟面试平台，支持语音面试、题库检索、简历追问、面试报告和长期记忆，适合做日常面试练习与复盘。
 
----
+## 界面预览
 
-## ✨ 功能亮点
+### 首页
 
-| 功能 | 说明 |
-|------|------|
-| 🎤 **实时语音面试** | 基于豆包语音大模型，AI 面试官以语音方式提问和点评 |
-| 🧠 **RAG 题库引擎** | 上传自定义题库（Markdown/PDF），面试官参考题库精准出题 |
-| 📄 **简历解析** | 上传简历，AI 针对你的项目经历进行追问 |
-| 📊 **面试评价报告** | 每场面试结束后生成详细评分和改进建议 |
-| 🔄 **长期记忆** | AI 自动识别薄弱知识点，后续面试优先考察 |
-| ⚙️ **自定义模型** | 支持用户配置自己的文本模型（OpenAI/DeepSeek 等）和语音模型密钥 |
+![HakiMeet 首页总览](resources/start.png)
 
-## 🏗️ 技术架构
+首页把开始面试、练习趋势、最近记录和长期记忆入口放在同一页，适合快速进入下一轮练习。
 
-```
-┌─────────────────────────────────────────┐
-│               Nginx (80)                │
-│   静态资源 + API/WS 反向代理              │
-├─────────────────────────────────────────┤
-│                                         │
-│  ┌──────────────┐   ┌────────────────┐  │
-│  │   Frontend   │   │    Backend     │  │
-│  │   Vue 3      │──▶│   FastAPI      │  │
-│  │   Vite       │   │   SQLite       │  │
-│  │   Tailwind   │   │   ChromaDB     │  │
-│  └──────────────┘   │   LangChain    │  │
-│                     │   豆包语音 API  │  │
-│                     └────────────────┘  │
-└─────────────────────────────────────────┘
-```
+### 面试过程
 
-- **前端**: Vue 3 + Vue Router + Pinia + Tailwind CSS 4 + Three.js
-- **后端**: FastAPI + SQLAlchemy + LangChain + ChromaDB + Sentence Transformers
-- **AI**: 豆包文本大模型（火山方舟）+ 豆包语音大模型（实时对话）
-- **数据库**: SQLite（轻量部署）+ ChromaDB（向量检索）
+![HakiMeet 面试页](resources/interview.png)
 
----
+面试页提供数字人面试官、实时对话区、计时状态和暂停/结束控制，整体流程更接近真实口语面试。
 
-## 🚀 快速部署
+## 核心能力
 
-### 方式一：Docker 一键部署（推荐）
+- 实时语音面试：基于豆包语音能力完成提问、追问和点评。
+- 题库增强：支持上传 Markdown 或 PDF 题库，结合 RAG 做更贴近岗位的提问。
+- 简历追问：上传简历后，面试官会围绕项目经历继续深挖。
+- 结果复盘：面试结束后生成评分和改进建议。
+- 长期记忆：记录薄弱点，在后续练习中持续追问。
+- 模型配置：文本模型和语音模型密钥都可以在页面中配置。
 
-#### 前置要求
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+## 技术栈
 
-#### 步骤
+- 前端：Vue 3、Vite、Pinia、Tailwind CSS、Three.js
+- 后端：FastAPI、SQLAlchemy、ChromaDB、LangChain
+- AI：豆包文本模型、豆包语音模型
+- 存储：SQLite、ChromaDB
+
+## 快速开始
+
+### Docker
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/your-username/hakimeet.git
-cd hakimeet
-
-# 2. 一键启动
 docker compose up -d --build
-
-# 3. 访问应用
-# 前端:  http://localhost
-# 后端:  http://localhost:8000/docs (API 文档)
-
-# 4. 配置 AI 模型（首次使用）
-# 打开 http://localhost/settings 填写您的模型密钥
 ```
 
-#### 停止服务
+启动后可访问：
+
+- 前端：`http://localhost`
+- 后端 API：`http://localhost:8000/docs`
+
+停止服务：
+
 ```bash
 docker compose down
 ```
 
-#### 查看日志
-```bash
-docker compose logs -f backend   # 后端日志
-docker compose logs -f frontend  # 前端日志
-```
+### 本地开发
 
----
-
-### 方式二：本地开发
-
-#### 前置要求
-- Python 3.12+
-- Node.js 20+
-
-#### 后端
+后端：
 
 ```bash
 cd backend
-python -m venv venv
-
-# Windows
-.\venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+python run.py
 ```
 
-#### 前端
+前端：
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-前端开发服务器启动后访问 http://localhost:5173，API 请求会自动代理到后端。
+前端默认运行在 `http://localhost:5173`，并代理后端接口。
 
----
+## 配置说明
 
-## ⚙️ 配置说明
-
-### 应用环境变量（`.env`）
+应用级环境变量只保留少量基础配置，例如：
 
 | 变量 | 说明 | 默认值 |
-|------|------|--------|
+| --- | --- | --- |
 | `SECRET_KEY` | JWT 签名密钥 | `dev-secret-change-in-production` |
 | `DATABASE_URL` | 数据库连接字符串 | `sqlite+aiosqlite:///./hakimeet.db` |
 
-### AI 模型密钥（前端动态配置）
+模型相关密钥不写入 `.env`，统一在应用内的 `/settings` 页面配置。
 
-所有 AI 模型密钥（文本模型 API Key、语音模型 API Key 等）均在应用内的 **「模型配置」** 页面设置，无需写入环境变量：
+## 使用流程
 
-1. 访问 `/settings` 页面
-2. **文本模型** — 开启开关，选择供应商（OpenAI / DeepSeek / 豆包 / 自定义），填写 API Key、端点和模型名称
-3. **语音模型** — 开启开关，填写豆包语音 API 的各项密钥
-4. 点击「保存配置」即可生效
+1. 上传简历或题库。
+2. 在首页选择简历、题库和分类。
+3. 开始语音面试并完成问答。
+4. 查看评分报告和长期记忆，继续下一轮练习。
 
----
+## 项目结构
 
-## 📁 项目结构
-
-```
-hakimeet/
-├── backend/
-│   ├── app/
-│   │   ├── ai/              # AI 引擎（面试/语音/RAG/记忆）
-│   │   ├── models/           # 数据库模型
-│   │   ├── routers/          # API 路由
-│   │   ├── schemas/          # Pydantic Schema
-│   │   ├── config.py         # 配置管理
-│   │   └── main.py           # FastAPI 入口
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── views/            # 页面组件
-│   │   ├── composables/      # 组合式函数
-│   │   ├── router/           # Vue Router
-│   │   └── App.vue           # 根组件
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
+```text
+HakiMeet/
+├── backend/        # FastAPI、RAG、语音与数据层
+├── frontend/       # Vue 3 前端界面
+├── resources/      # README 使用的界面截图
 ├── docker-compose.yml
-├── .env.example
 └── README.md
 ```
 
----
-
-## 📝 使用流程
-
-1. **上传简历**（可选）— 在「简历管理」页面上传 PDF 格式简历
-2. **导入题库**（可选）— 在「题库管理」页面上传 Markdown 格式的面试题库
-3. **开始面试** — 在首页选择题库分类和简历，点击「开始面试」
-4. **语音交互** — 允许麦克风权限后，与 AI 面试官进行实时语音对话
-5. **查看报告** — 面试结束后查看评分报告和改进建议
-6. **持续提升** — 在「长期记忆」页面查看 AI 自动提取的薄弱知识点
-
----
-
-## 📜 License
+## License
 
 MIT
